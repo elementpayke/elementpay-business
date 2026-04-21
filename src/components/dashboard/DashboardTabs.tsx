@@ -1,37 +1,53 @@
 "use client";
 
-import { LayoutDashboard, ArrowLeftRight, Wallet, FileText, Store, Settings } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Code2, LayoutDashboard, ShieldCheck, Wallet, ArrowLeftRight, FileText } from "lucide-react";
+import { dashboardTabs } from "@/components/dashboard/dashboardData";
 
-const tabs = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: ArrowLeftRight, label: "Transactions" },
-  { icon: Wallet, label: "Wallets" },
-  { icon: FileText, label: "Reports" },
-  { icon: Store, label: "Merchant Ops", badge: "Pro" },
-  { icon: Settings, label: "Settings" },
-];
+const iconMap = {
+  Dashboard: LayoutDashboard,
+  Transactions: ArrowLeftRight,
+  Wallets: Wallet,
+  Reports: FileText,
+  Verification: ShieldCheck,
+  Developer: Code2,
+};
 
 export default function DashboardTabs() {
+  const pathname = usePathname();
+
   return (
-    <nav className="flex items-center gap-1 px-6 pt-2 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
-      {tabs.map(({ icon: Icon, label, active, badge }) => (
-        <button
-          key={label}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors relative ${
-            active
-              ? "bg-tertiary-500 text-white"
-              : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-          }`}
-        >
-          <Icon className="w-4 h-4" />
-          {label}
-          {badge && (
-            <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded">
-              {badge}
-            </span>
-          )}
-        </button>
-      ))}
+    <nav className="overflow-x-auto">
+      <div className="flex min-w-max items-center gap-6">
+        {dashboardTabs.map((tab) => {
+          const Icon = iconMap[tab.label as keyof typeof iconMap];
+          const active = tab.href === "/dashboard" ? pathname === tab.href : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`group relative flex items-center gap-2 py-4 text-sm transition ${
+                active
+                  ? "font-semibold text-primary-600"
+                  : "font-medium text-[#81879A] hover:text-[#232B45]"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              <span>{tab.label}</span>
+              {tab.badge ? (
+                <span className="rounded-full bg-[#FFE8EE] px-2 py-0.5 text-[10px] font-semibold text-[#FF6B8E]">
+                  {tab.badge}
+                </span>
+              ) : null}
+              {active ? (
+                <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary-500" />
+              ) : null}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

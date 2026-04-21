@@ -1,104 +1,140 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import Flag from "@/components/dashboard/Flag";
+import { DropdownTrigger, cardClassName } from "@/components/dashboard/DashboardPrimitives";
+import { topCurrencies, volumeData } from "@/components/dashboard/dashboardData";
 
-const monthlyData = [
-  { month: "Jan", value: 65 },
-  { month: "Feb", value: 45 },
-  { month: "Mar", value: 75 },
-  { month: "Apr", value: 50 },
-  { month: "May", value: 85 },
-  { month: "Jun", value: 60 },
-  { month: "Jul", value: 40 },
-  { month: "Aug", value: 70 },
-  { month: "Sep", value: 55 },
-  { month: "Oct", value: 90 },
-  { month: "Nov", value: 0 },
-  { month: "Dec", value: 0 },
-];
+const flagForCode: Record<string, "KE" | "NG" | "GH"> = {
+  KES: "KE",
+  NGN: "NG",
+  GHS: "GH",
+};
 
-const topCurrencies = [
-  { flag: "🇰🇪", name: "Kenyan Shillings, KES", amount: "USD 45,230" },
-  { flag: "🇳🇬", name: "Nigerian Naira, NGN", amount: "USD 31,020" },
-  { flag: "🇬🇭", name: "Ghanaian Cedis, GHR", amount: "USD 28,783" },
-];
-
-export default function TransactionVolumeChart() {
-  const maxValue = Math.max(...monthlyData.map((d) => d.value));
+function VolumeBars() {
+  const yTicks = [0, 10, 20, 30, 40, 50, 60];
+  const maxValue = 60_000;
+  const chartH = 260;
+  const chartPaddingTop = 10;
+  const usableH = chartH - chartPaddingTop;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Chart */}
-      <div className="lg:col-span-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="font-semibold">Transaction Volume Chart</h3>
-            <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-secondary-500" />
-                Money in
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />
-                Money out
-              </div>
-            </div>
-          </div>
-          <button className="flex items-center gap-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            This year
-            <ChevronDown className="w-3.5 h-3.5" />
-          </button>
+    <div className="mt-4">
+      <div className="flex gap-3">
+        {/* Y axis labels */}
+        <div
+          className="flex flex-col-reverse justify-between pr-1 text-[11px] text-[#A5AAC0]"
+          style={{ height: chartH }}
+        >
+          {yTicks.map((t) => (
+            <span key={t}>{t}k</span>
+          ))}
         </div>
 
-        {/* Y-axis labels + bars */}
-        <div className="flex gap-2">
-          <div className="flex flex-col justify-between text-xs text-gray-400 pr-2 py-1" style={{ height: 200 }}>
-            <span>$1k</span>
-            <span>$9k</span>
-            <span>$8k</span>
-            <span>$7k</span>
-            <span>$6k</span>
-            <span>$0</span>
+        {/* Chart area */}
+        <div className="relative flex-1">
+          {/* Grid lines */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 flex flex-col-reverse justify-between"
+            style={{ height: chartH }}
+          >
+            {yTicks.map((t) => (
+              <div key={t} className="h-px w-full bg-[#EEF0F6]" />
+            ))}
           </div>
-          <div className="flex-1 flex items-end justify-between gap-2" style={{ height: 200 }}>
-            {monthlyData.map((d) => (
-              <div key={d.month} className="flex flex-col items-center gap-1 flex-1">
-                <div
-                  className="w-full max-w-8 rounded-t-md bg-secondary-400 dark:bg-secondary-500 transition-all"
-                  style={{ height: maxValue ? `${(d.value / maxValue) * 160}px` : "0px" }}
-                />
-                <span className="text-[10px] text-gray-400 mt-1">{d.month}</span>
-              </div>
+
+          {/* Bars */}
+          <div
+            className="relative grid grid-cols-12 items-end gap-2"
+            style={{ height: chartH, paddingTop: chartPaddingTop }}
+          >
+            {volumeData.map((d) => {
+              const inH = Math.max(2, (d.moneyIn / maxValue) * usableH);
+              const outH = Math.max(2, (d.moneyOut / maxValue) * usableH);
+              return (
+                <div key={d.month} className="flex h-full items-end justify-center gap-1">
+                  <div
+                    className="w-2.5 rounded-sm bg-primary-500 transition-[height] duration-500 ease-out"
+                    style={{ height: inH }}
+                    title={`Money In: ${d.moneyIn.toLocaleString()}`}
+                  />
+                  <div
+                    className="w-2.5 rounded-sm bg-secondary-500 transition-[height] duration-500 ease-out"
+                    style={{ height: outH }}
+                    title={`Money Out: ${d.moneyOut.toLocaleString()}`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* X axis labels */}
+          <div className="mt-2 grid grid-cols-12 gap-2 text-[11px] text-[#9298AC]">
+            {volumeData.map((d) => (
+              <span key={d.month} className="text-center">
+                {d.month}
+              </span>
             ))}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Top currencies */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-sm">Top Transaction Currencies</h3>
-          <button className="text-xs text-primary-500 hover:text-primary-600 transition-colors">
-            See more
-          </button>
-        </div>
-        <div className="flex flex-col gap-3">
-          {topCurrencies.map((c) => (
-            <div
-              key={c.name}
-              className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-lg px-4 py-3"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{c.flag}</span>
-                <span className="text-sm text-gray-700 dark:text-gray-300">{c.name}</span>
-              </div>
-              <span className="text-sm font-semibold text-tertiary-600 dark:text-tertiary-400">
-                {c.amount}
+export default function TransactionVolumeChart() {
+  return (
+    <section className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className={cardClassName("p-5 sm:p-6")}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-[#1C2238]">Transaction Volume Chart</h3>
+            <div className="mt-3 flex flex-wrap items-center gap-4 rounded-full border border-[#ECEEF5] px-3 py-1.5 text-xs text-[#5F6680] w-fit">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-primary-500" />
+                Money In
               </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-secondary-500" />
+                Money Out
+              </span>
+            </div>
+          </div>
+          <DropdownTrigger label="This year" />
+        </div>
+
+        <VolumeBars />
+      </div>
+
+      <div className={cardClassName("p-5 sm:p-6")}>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-sm font-semibold text-[#1C2238]">Top Transaction Currencies</h3>
+          <DropdownTrigger label="This month" compact />
+        </div>
+
+        <div className="mt-6 space-y-6">
+          {topCurrencies.map((currency) => (
+            <div key={currency.code} className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2 text-sm text-[#3B4263]">
+                  <Flag code={flagForCode[currency.code] ?? "KE"} size={18} />
+                  <span className="truncate">
+                    {currency.name}, {currency.code}
+                  </span>
+                </div>
+                <span className="shrink-0 text-xs font-semibold text-[#3B4263]">
+                  {currency.amount}
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-[#F1F3F9]">
+                <div
+                  className="h-1.5 rounded-full bg-primary-500 transition-[width] duration-500 ease-out"
+                  style={{ width: `${currency.progress}%` }}
+                />
+              </div>
             </div>
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

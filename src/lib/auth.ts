@@ -191,6 +191,23 @@ export async function getWallets(): Promise<WalletResponse[]> {
   return result.data;
 }
 
+export interface PrivyTokenResponse {
+  token: string;
+  token_type?: string;
+}
+
+// Privy requires RS256-signed JWTs (it verifies them via JWKS). Our normal
+// session tokens are HS256, so we exchange them for an RS256 JWT here. The
+// returned token is what `useSubscribeToJwtAuthWithFlag` feeds to Privy so
+// the user is silently logged in without ever seeing the Privy modal.
+export async function getPrivyToken(): Promise<PrivyTokenResponse> {
+  const res = await fetch(`${API_BASE}/auth/privy/token`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  return handleResponse<PrivyTokenResponse>(res);
+}
+
 export function logout() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("access_token");

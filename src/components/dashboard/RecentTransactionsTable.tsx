@@ -1,153 +1,129 @@
 "use client";
 
-import { Filter, Download } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Download, SlidersHorizontal, X } from "lucide-react";
+import Flag from "@/components/dashboard/Flag";
+import { StatusBadge, UserAvatar, mergeClasses } from "@/components/dashboard/DashboardPrimitives";
+import { recentTransactions, type CountryCode } from "@/components/dashboard/dashboardData";
 
-const transactions = [
-  {
-    client: "Ayo Vikash",
-    date: "Dec 5 - 12:00m",
-    type: "Single payment",
-    method: "M-Pesa Mobile",
-    status: "Successful",
-    txDate: "01/1/01/19",
-    amount: "+KES 8,991",
-  },
-  {
-    client: "Sara O'Johnson",
-    date: "Dec 5 - 12:00m",
-    type: "Invoice payo",
-    method: "Bank transfer",
-    status: "Cancelled",
-    txDate: "01/1/1/41",
-    amount: "+NGN 2,204",
-  },
-  {
-    client: "Ally Makena",
-    date: "Dec 5 - 12:00m",
-    type: "Bulk payment",
-    method: "Bank transfer",
-    status: "Successful",
-    txDate: "01/1/01/19",
-    amount: "+KES 8,991",
-  },
-  {
-    client: "David Machit",
-    date: "Dec 5 - 12:00m",
-    type: "Deposit",
-    method: "Bank transfer",
-    status: "Failed",
-    txDate: "1/0/5/1/1/41",
-    amount: "-GHS 1,456",
-  },
-  {
-    client: "Susan Okarrisar",
-    date: "Dec 5 - 12:00m",
-    type: "Single payment",
-    method: "Bank transfer",
-    status: "Successful",
-    txDate: "1/1/3/01/19",
-    amount: "+NGN 1,991",
-  },
-  {
-    client: "David Machit",
-    date: "Dec 5 - 12:00m",
-    type: "Invoice payo",
-    method: "M1 Mobile",
-    status: "Cancelled",
-    txDate: "1/1/5/1/41",
-    amount: "+GHS 4,244",
-  },
-  {
-    client: "Ayo Vikash",
-    date: "Dec 5 - 12:00m",
-    type: "Single payment",
-    method: "M-Pesa Mobile",
-    status: "Successful",
-    txDate: "01/1/01/19",
-    amount: "+KES 8,991",
-  },
-  {
-    client: "Sara O'Johnson",
-    date: "Dec 5 - 12:00m",
-    type: "Single payment",
-    method: "Bank transfer",
-    status: "Cancelled",
-    txDate: "01/1/01/19",
-    amount: "+NGN 2,204",
-  },
-  {
-    client: "Ayo Vikash",
-    date: "Dec 5 - 12:00m",
-    type: "Single payment",
-    method: "Bank transfer",
-    status: "Successful",
-    txDate: "01/1/01/19",
-    amount: "+KES 8,991",
-  },
+const chips = [
+  { label: "Pay-out", active: true },
+  { label: "Single payment", active: true },
+  { label: "Failed", active: true },
 ];
 
-const statusStyles: Record<string, string> = {
-  Successful: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  Cancelled: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-  Failed: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-};
+function DirectionAvatar({
+  name,
+  country,
+  direction,
+}: {
+  name: string;
+  country: CountryCode;
+  direction: "in" | "out";
+}) {
+  return (
+    <div className="relative">
+      <UserAvatar name={name} />
+      <span className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white rounded-full">
+        <Flag code={country} size={12} />
+      </span>
+      <span
+        className={mergeClasses(
+          "absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-white",
+          direction === "in" ? "bg-[#E8F8EF] text-[#1E9F72]" : "bg-[#FFEFEF] text-[#D95252]",
+        )}
+        aria-hidden
+      >
+        {direction === "in" ? (
+          <ArrowDownLeft className="h-2.5 w-2.5" strokeWidth={3} />
+        ) : (
+          <ArrowUpRight className="h-2.5 w-2.5" strokeWidth={3} />
+        )}
+      </span>
+    </div>
+  );
+}
 
 export default function RecentTransactionsTable() {
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">Recent transactions</h3>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <Filter className="w-3.5 h-3.5" />
-            Filter
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-[#3F465E]">Recent transactions</h3>
+        <div className="flex items-center gap-4 text-sm">
+          <button className="font-medium text-primary-600 transition hover:text-primary-700">
+            View all
           </button>
-          <button className="flex items-center gap-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <Download className="w-3.5 h-3.5" />
+          <button className="inline-flex items-center gap-1.5 text-[#677089] transition hover:text-[#222945]">
+            <Download className="h-3.5 w-3.5" />
             Export CSV
           </button>
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <button className="inline-flex items-center gap-2 rounded-full border border-[#E7EAF3] bg-white px-3 py-1.5 text-xs font-medium text-[#677089] transition hover:border-[#D6DBEA] hover:text-[#222945]">
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Filter
+        </button>
+        {chips.map((chip) => (
+          <span
+            key={chip.label}
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-100/60 px-3 py-1.5 text-xs font-medium text-primary-700"
+          >
+            {chip.label}
+            <button
+              type="button"
+              aria-label={`Remove ${chip.label} filter`}
+              className="text-primary-600/70 transition hover:text-primary-700"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+        <button className="text-xs font-medium text-[#9CA3B6] transition hover:text-[#2B324B]">
+          Clear all
+        </button>
+      </div>
+
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead>
-            <tr className="text-left text-xs text-gray-400 dark:text-gray-500 border-b border-gray-100 dark:border-gray-800">
+            <tr className="text-left text-[11px] font-medium text-[#9298AC]">
               <th className="pb-3 pr-4 font-medium">Client name</th>
               <th className="pb-3 pr-4 font-medium">Txn type</th>
               <th className="pb-3 pr-4 font-medium">Payment method</th>
               <th className="pb-3 pr-4 font-medium">Txn status</th>
-              <th className="pb-3 pr-4 font-medium">Date</th>
+              <th className="pb-3 pr-4 font-medium">Fees</th>
               <th className="pb-3 font-medium">Amount</th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map((t, i) => (
-              <tr key={i} className="border-b border-gray-50 dark:border-gray-800 last:border-0">
-                <td className="py-3 pr-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-xs font-semibold text-primary-600 dark:text-primary-300">
-                      {t.client
-                        .split(" ")
-                        .map((w) => w[0])
-                        .join("")
-                        .slice(0, 2)}
-                    </div>
+            {recentTransactions.map((t, i) => (
+              <tr key={i} className="border-t border-[#F0F2F7] text-[#434A61]">
+                <td className="py-3.5 pr-4">
+                  <div className="flex items-center gap-2.5">
+                    <DirectionAvatar
+                      name={t.client}
+                      country={t.country}
+                      direction={t.direction}
+                    />
                     <div>
-                      <div className="font-medium">{t.client}</div>
-                      <div className="text-[11px] text-gray-400">{t.date}</div>
+                      <p className="text-sm font-medium text-[#1F2640]">{t.client}</p>
+                      <p className="mt-0.5 text-[11px] text-[#9298AC]">{t.date}</p>
                     </div>
                   </div>
                 </td>
-                <td className="py-3 pr-4 text-gray-600 dark:text-gray-400">{t.type}</td>
-                <td className="py-3 pr-4 text-gray-600 dark:text-gray-400">{t.method}</td>
-                <td className="py-3 pr-4">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusStyles[t.status] ?? ""}`}>
-                    {t.status}
-                  </span>
+                <td className="py-3.5 pr-4">{t.type}</td>
+                <td className="py-3.5 pr-4">{t.paymentMethod}</td>
+                <td className="py-3.5 pr-4">
+                  <StatusBadge status={t.status} />
                 </td>
-                <td className="py-3 pr-4 text-gray-600 dark:text-gray-400">{t.txDate}</td>
-                <td className={`py-3 font-medium ${t.amount.startsWith("-") ? "text-red-500" : "text-tertiary-600 dark:text-tertiary-400"}`}>
+                <td className="py-3.5 pr-4 text-[#9298AC]">{t.fees}</td>
+                <td
+                  className={mergeClasses(
+                    "py-3.5 font-medium",
+                    t.amount.startsWith("-") ? "text-[#1F2640]" : "text-[#1E9F72]",
+                  )}
+                >
                   {t.amount}
                 </td>
               </tr>
@@ -155,6 +131,6 @@ export default function RecentTransactionsTable() {
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   );
 }

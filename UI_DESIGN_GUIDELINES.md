@@ -97,4 +97,23 @@ All palette colors are available as Tailwind utilities:
 
 ---
 
+## Border Radius
+
+Tailwind v4 ships a default radius scale; ElementPay treats `rounded-lg` (12px) as the **baseline** for almost every interactive surface. Avoid mixing arbitrary radii — pick the closest token below.
+
+| Token            | Pixels   | Usage                                                           |
+| ---------------- | -------- | --------------------------------------------------------------- |
+| `rounded-md`     | 6px      | Inline status pills, dense tags                                 |
+| `rounded-lg`     | **12px** | **Default** — buttons, inputs, dropdowns, small action chips    |
+| `rounded-xl`     | 16px     | Cards, modal sections, table wrappers                           |
+| `rounded-2xl`    | 20px     | Large feature cards (consolidated balance, wallet detail panel) |
+| `rounded-full`   | —        | Avatars, currency pills, FX rate chips, icon buttons            |
+
+Notes:
+- Field controls (inputs, selects, dropdown triggers) should resolve to `rounded-lg` (12px) unless they sit inside a larger container where `rounded-xl` reads better.
+- Nested cards step **down** one tier from their parent (e.g. an inner block inside a `rounded-2xl` panel uses `rounded-xl`).
+- Pills (currency badges, FX chips, status filters) stay `rounded-full`.
+
+---
+
 *This file will be expanded with spacing, component patterns, iconography, and motion guidelines as the design system evolves.*

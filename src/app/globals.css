@@ -71,3 +71,20 @@ body {
   color: var(--foreground);
   font-family: var(--font-creato-display), sans-serif;
 }
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #f7f8fc;
+  color: #171d32;
+}
+
+::selection {
+  background: rgba(65, 58, 203, 0.16);
+}

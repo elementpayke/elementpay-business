@@ -1,50 +1,70 @@
 "use client";
 
-import { Search, Bell, Settings, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown, Settings } from "lucide-react";
+import { SearchInput, UserAvatar } from "@/components/dashboard/DashboardPrimitives";
+import UserMenu from "@/components/navbar/UserMenu";
+import { useAuth } from "@/lib/AuthContext";
+
+function getDisplayName(email: string): string {
+  const local = email.split("@")[0];
+  return local
+    .split(/[._-]/)
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(" ");
+}
+
+function GhostIconButton({ children, ariaLabel }: { children: React.ReactNode; ariaLabel: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      className="flex h-9 w-9 items-center justify-center rounded-full text-[#7D8398] transition hover:bg-[#F4F5F9] hover:text-[#1F2640]"
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function DashboardNavbar() {
-  return (
-    <header className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
-      {/* Left: Logo */}
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center">
-            <span className="text-white dark:text-black font-bold text-sm">E</span>
-          </div>
-          <span className="font-bold text-lg tracking-tight">ElementPay</span>
-        </div>
+  const { user } = useAuth();
+  const displayName = user?.email ? getDisplayName(user.email) : "John Doe";
+  const firstName = displayName.split(" ")[0];
 
-        {/* Greeting */}
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          Hello <span className="font-semibold text-gray-900 dark:text-white">John</span>{" "}
-          <span>👋</span>{" "}
-          <span className="text-gray-400 dark:text-gray-500">Welcome back</span>
+  return (
+    <header className="grid h-[72px] grid-cols-[auto_1fr_auto] items-center gap-6">
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-500">
+          <span className="block h-2.5 w-2.5 rounded-sm bg-white" />
         </div>
+        <span className="text-[15px] font-semibold tracking-[-0.02em] text-[#1C2238]">
+          ElementPay
+        </span>
       </div>
 
-      {/* Right: Search + actions */}
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search"
-            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg pl-10 pr-4 py-2 text-sm w-48 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          />
-        </div>
-        <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative">
-          <Bell className="w-5 h-5 text-gray-500" />
-        </button>
-        <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <Settings className="w-5 h-5 text-gray-500" />
-        </button>
-        <button className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center">
-            <span className="text-white text-xs font-semibold">JD</span>
-          </div>
-          <span className="text-sm font-medium">John Doe</span>
-          <ChevronDown className="w-4 h-4 text-gray-400" />
-        </button>
+      <div className="hidden min-w-0 items-center justify-center gap-2 text-sm sm:flex">
+        <span className="text-[#7E8498]">Hello,</span>
+        <span className="font-semibold text-[#161D35]">{firstName}.</span>
+        <span aria-hidden>👋</span>
+        <span className="text-[#7E8498]">Welcome back!</span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <SearchInput />
+        <GhostIconButton ariaLabel="Notifications">
+          <Bell className="h-[18px] w-[18px]" />
+        </GhostIconButton>
+        <GhostIconButton ariaLabel="Settings">
+          <Settings className="h-[18px] w-[18px]" />
+        </GhostIconButton>
+        <UserMenu email={user?.email}>
+          <span className="ml-1 flex items-center gap-2 rounded-full px-1 py-1 transition hover:bg-[#F4F5F9]">
+            <UserAvatar name={displayName} />
+            <span className="hidden text-sm font-medium text-[#1F2640] sm:inline">
+              {displayName}
+            </span>
+            <ChevronDown className="mr-1 h-4 w-4 text-[#969CB0]" />
+          </span>
+        </UserMenu>
       </div>
     </header>
   );
