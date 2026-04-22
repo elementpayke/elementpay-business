@@ -87,7 +87,7 @@ export const quickActions: QuickAction[] = [
     title: "Create Invoice",
     description: "Request/collect payments",
     tone: "tertiary",
-    href: "/dashboard/reports",
+    href: "/dashboard/invoices/create",
   },
   {
     title: "Deposit Funds",

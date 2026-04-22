@@ -5,20 +5,28 @@ import { stepLabels } from "@/components/payments/paymentData";
 
 const icons = [UserRound, CircleDollarSign, WalletCards];
 
-export default function Stepper({ currentStep }: { currentStep: number }) {
+type StepperProps = {
+  currentStep: 1 | 2 | 3;
+  /** When true, all three phases render as complete (e.g. on PIN / processing / success). */
+  allComplete?: boolean;
+};
+
+export default function Stepper({ currentStep, allComplete = false }: StepperProps) {
   return (
     <div className="rounded-[20px] border border-[#E9EAF2] bg-white px-5 py-4 shadow-[0_2px_8px_rgba(16,24,40,0.04)]">
       <div className="grid gap-4 sm:grid-cols-3">
         {stepLabels.map((label, index) => {
           const Icon = icons[index];
-          const active = index + 1 === currentStep;
-          const complete = index + 1 < currentStep;
+          const stepNumber = index + 1;
+          const active = !allComplete && stepNumber === currentStep;
+          const complete = allComplete || stepNumber < currentStep;
+          const reached = active || complete;
 
           return (
             <div key={label} className="flex items-center gap-3">
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-full border ${
-                  active || complete
+                  reached
                     ? "border-tertiary-300 bg-tertiary-100 text-tertiary-700"
                     : "border-[#E9EAF2] bg-[#FAFBFE] text-[#9CA3B6]"
                 }`}
@@ -27,8 +35,26 @@ export default function Stepper({ currentStep }: { currentStep: number }) {
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className={`h-px w-full ${index !== stepLabels.length - 1 ? "bg-[#E8EBF3]" : "bg-transparent"}`} />
-                <p className={`mt-2 text-xs ${active ? "font-semibold text-[#1E243A]" : "text-[#9399AE]"}`}>{label}</p>
+                <div
+                  className={`h-px w-full ${
+                    index !== stepLabels.length - 1
+                      ? complete
+                        ? "bg-tertiary-300"
+                        : "bg-[#E8EBF3]"
+                      : "bg-transparent"
+                  }`}
+                />
+                <p
+                  className={`mt-2 text-xs ${
+                    reached
+                      ? active
+                        ? "font-semibold text-tertiary-700"
+                        : "text-tertiary-700"
+                      : "text-[#9399AE]"
+                  }`}
+                >
+                  {label}
+                </p>
               </div>
             </div>
           );

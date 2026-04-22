@@ -17,6 +17,7 @@ export type SavedRecipient = {
   paymentMethod: string;
   flag: string;
   label: string;
+  phoneNumber?: string;
 };
 
 export const savedRecipients: SavedRecipient[] = [
@@ -27,6 +28,7 @@ export const savedRecipients: SavedRecipient[] = [
     paymentMethod: "M-Pesa Mobile Money",
     flag: "🇰🇪",
     label: "Kenya",
+    phoneNumber: "254790284024",
   },
   {
     name: "Sarah Okonkwo",

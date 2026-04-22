@@ -7,12 +7,29 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { countries, paymentMethodsByCountry, type Country, type SavedRecipient } from "@/components/payments/paymentData";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
+import { validateKenyanPhoneNumber } from "@/lib/phoneValidation";
 
-const recipientSchema = z.object({
-  email: z.string().email("Enter a valid email address"),
-  country: z.enum(countries, { message: "Select a country" }),
-  paymentMethod: z.string().min(1, "Select a payment method"),
-});
+const MPESA_METHODS = new Set(["M-Pesa Mobile Money", "M-Pesa Paybill"]);
+
+const recipientSchema = z
+  .object({
+    email: z.string().email("Enter a valid email address"),
+    country: z.enum(countries, { message: "Select a country" }),
+    paymentMethod: z.string().min(1, "Select a payment method"),
+    phoneNumber: z.string().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.country === "Kenya" && MPESA_METHODS.has(value.paymentMethod)) {
+      const res = validateKenyanPhoneNumber(value.phoneNumber ?? "");
+      if (!res.isValid) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["phoneNumber"],
+          message: res.error ?? "Invalid phone number",
+        });
+      }
+    }
+  });
 
 export type RecipientFormValues = z.infer<typeof recipientSchema>;
 
@@ -32,6 +49,7 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
     watch,
     handleSubmit,
     setValue,
+    getValues,
     formState: { errors, isValid },
   } = useForm<RecipientFormValues>({
     resolver: zodResolver(recipientSchema),
@@ -40,33 +58,38 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
       email: initialValues?.email ?? "",
       country: initialValues?.country,
       paymentMethod: initialValues?.paymentMethod ?? "",
+      phoneNumber: initialValues?.phoneNumber ?? "",
     },
   });
 
   const selectedCountry = watch("country");
+  const selectedMethod = watch("paymentMethod");
   const methods = selectedCountry ? paymentMethodsByCountry[selectedCountry as Country] : [];
+  const needsKenyanPhone =
+    selectedCountry === "Kenya" && MPESA_METHODS.has(selectedMethod);
 
   useEffect(() => {
     if (!selectedRecipient) return;
     setValue("email", selectedRecipient.email, { shouldValidate: true });
     setValue("country", selectedRecipient.country, { shouldValidate: true });
     setValue("paymentMethod", selectedRecipient.paymentMethod, { shouldValidate: true });
+    setValue("phoneNumber", selectedRecipient.phoneNumber ?? "", { shouldValidate: true });
   }, [selectedRecipient, setValue]);
 
   useEffect(() => {
     if (!selectedCountry) return;
     const availableMethods = paymentMethodsByCountry[selectedCountry as Country];
-    const currentMethod = watch("paymentMethod");
+    const currentMethod = getValues("paymentMethod");
     if (currentMethod && !availableMethods.includes(currentMethod)) {
       setValue("paymentMethod", "", { shouldValidate: true });
     }
-  }, [selectedCountry, setValue, watch]);
+  }, [selectedCountry, setValue, getValues]);
 
   return (
     <div className={cardClassName("p-4 sm:p-5")}>
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <div>
-          <label className="mb-2 block text-xs text-[#4D556D]">Recipient's email address</label>
+          <label className="mb-2 block text-xs text-[#4D556D]">Recipient&apos;s email address</label>
           <input
             {...register("email")}
             placeholder="Enter email address"
@@ -76,7 +99,7 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
         </div>
 
         <div>
-          <label className="mb-2 block text-xs text-[#4D556D]">Recipient's country</label>
+          <label className="mb-2 block text-xs text-[#4D556D]">Recipient&apos;s country</label>
           <div className="relative">
             <select
               {...register("country")}
@@ -115,7 +138,35 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
           <FieldError message={errors.paymentMethod?.message} />
         </div>
 
-        {methods.length > 0 ? (
+        {needsKenyanPhone ? (
+          <div>
+            <label className="mb-2 block text-xs text-[#4D556D]">
+              Recipient&apos;s phone number (Safaricom)
+            </label>
+            <div className="flex items-stretch gap-2">
+              <div className="inline-flex items-center rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-3 text-sm font-medium text-[#4D556D]">
+                🇰🇪 +254
+              </div>
+              <input
+                {...register("phoneNumber", {
+                  setValueAs: (raw: string) => {
+                    const digits = (raw ?? "").replace(/\D/g, "");
+                    if (!digits) return "";
+                    if (digits.startsWith("254")) return digits;
+                    if (digits.startsWith("0")) return `254${digits.slice(1)}`;
+                    return `254${digits}`;
+                  },
+                })}
+                inputMode="tel"
+                placeholder="7XX XXX XXX"
+                className="h-12 flex-1 rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
+              />
+            </div>
+            <FieldError message={errors.phoneNumber?.message} />
+          </div>
+        ) : null}
+
+        {methods.length > 0 && !needsKenyanPhone ? (
           <div className="rounded-xl border border-[#F0F2F7] bg-[#FAFBFE] px-4 py-3 text-sm text-[#2A3150]">
             <ul className="space-y-2">
               {methods.map((method) => (

@@ -10,6 +10,7 @@ type WalletListProps = {
   onCreateWallet: () => void;
   onFundWallet: (address: `0x${string}`) => void;
   onSendFromWallet?: (address: `0x${string}`) => void;
+  onReceiveToWallet?: (address: `0x${string}`) => void;
 };
 
 export default function WalletList({
@@ -17,6 +18,7 @@ export default function WalletList({
   onCreateWallet,
   onFundWallet,
   onSendFromWallet,
+  onReceiveToWallet,
 }: WalletListProps) {
   const router = useRouter();
   const { wallets, selectedWalletAddress, setSelectedWallet } = useSelectedWallet();
@@ -52,6 +54,14 @@ export default function WalletList({
             active={wallet.address === selectedWalletAddress}
             onSelect={() => setSelectedWallet(wallet.address)}
             onFund={() => onFundWallet(wallet.address)}
+            onReceive={
+              onReceiveToWallet
+                ? () => {
+                    setSelectedWallet(wallet.address);
+                    onReceiveToWallet(wallet.address);
+                  }
+                : undefined
+            }
             onSend={() => {
               setSelectedWallet(wallet.address);
               if (onSendFromWallet) {

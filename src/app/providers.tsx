@@ -6,6 +6,7 @@ import { WagmiProvider } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/lib/AuthContext";
+import { CurrencyProvider } from "@/lib/currency/CurrencyContext";
 import { wagmiConfig } from "@/lib/wallets/wagmi-config";
 import PrivyAuthSync from "@/components/auth/PrivyAuthSync";
 
@@ -22,10 +23,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   const tree = (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <AuthProvider>
-        {appId ? <PrivyAuthSync /> : null}
-        {children}
-      </AuthProvider>
+      <CurrencyProvider>
+        <AuthProvider>
+          {appId ? <PrivyAuthSync /> : null}
+          {children}
+        </AuthProvider>
+      </CurrencyProvider>
     </ThemeProvider>
   );
 

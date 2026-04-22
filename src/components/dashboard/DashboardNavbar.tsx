@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, ChevronDown, Settings } from "lucide-react";
+import CurrencySwitcher from "@/components/dashboard/CurrencySwitcher";
 import { SearchInput, UserAvatar } from "@/components/dashboard/DashboardPrimitives";
 import UserMenu from "@/components/navbar/UserMenu";
 import { useAuth } from "@/lib/AuthContext";
@@ -49,6 +50,7 @@ export default function DashboardNavbar() {
       </div>
 
       <div className="flex items-center gap-2">
+        <CurrencySwitcher />
         <SearchInput />
         <GhostIconButton ariaLabel="Notifications">
           <Bell className="h-[18px] w-[18px]" />

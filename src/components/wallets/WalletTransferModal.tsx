@@ -6,6 +6,7 @@ import { ArrowDown, ExternalLink, Loader2, X } from "lucide-react";
 import { erc20Abi, isAddress, parseUnits } from "viem";
 import { base } from "wagmi/chains";
 import { useSwitchChain, useWriteContract } from "wagmi";
+import { useCurrency } from "@/lib/currency/CurrencyContext";
 import { SUPPORTED_TOKENS } from "@/lib/wallets/supportedTokens";
 import { shortAddress } from "@/lib/wallets/wallet-selection";
 import type { LiveWallet } from "@/lib/wallets/types";
@@ -16,7 +17,7 @@ type WalletTransferModalProps = {
   open: boolean;
   onClose: () => void;
   source: LiveWallet | null;
-  /** Other live wallets the user owns — surfaced as quick "Send to my wallet" picks. */
+  /** Other live wallets the user owns - surfaced as quick "Send to my wallet" picks. */
   ownedWallets: LiveWallet[];
 };
 
@@ -36,6 +37,7 @@ function WalletTransferModalBody({
   source,
   ownedWallets,
 }: WalletTransferModalProps & { source: LiveWallet }) {
+  const { formatMoneyFromUsd } = useCurrency();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [tx, setTx] = useState<TxState>({ kind: "idle" });
@@ -130,7 +132,7 @@ function WalletTransferModalBody({
               type="text"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value.trim())}
-              placeholder="0x…"
+              placeholder="0x..."
               spellCheck={false}
               autoComplete="off"
               className="mt-1 h-11 w-full rounded-lg border border-[#ECEEF4] bg-[#FAFBFE] px-3.5 font-mono text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
@@ -184,7 +186,7 @@ function WalletTransferModalBody({
               </button>
             </div>
             <div className="mt-1 flex items-center justify-between text-[11px] text-[#8E93A7]">
-              <span>~ USD {amountValid ? amountNumber.toFixed(2) : "0.00"}</span>
+              <span>{formatMoneyFromUsd(amountValid ? amountNumber : 0)}</span>
               <span>Available: {source.balance.formatted} USDC</span>
             </div>
             {overBalance ? (
@@ -205,12 +207,7 @@ function WalletTransferModalBody({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-lg border border-tertiary-200 bg-tertiary-50 px-3 py-2 text-xs font-medium text-tertiary-700 transition hover:border-tertiary-300"
             >
-              <Image
-                src="/Base_Symbol_Blue.svg"
-                alt="Base"
-                width={12}
-                height={12}
-              />
+              <Image src="/Base_Symbol_Blue.svg" alt="Base" width={12} height={12} />
               Sent · view on BaseScan
               <ExternalLink className="h-3 w-3" />
             </a>
@@ -231,7 +228,7 @@ function WalletTransferModalBody({
             >
               {tx.kind === "submitting" ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                  <Loader2 className="h-4 w-4 animate-spin" /> Sending...
                 </>
               ) : (
                 "Send USDC"

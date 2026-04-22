@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Wallet as WalletIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Wallet as WalletIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCreateWallet, usePrivy } from "@privy-io/react-auth";
 import ConsolidatedBalanceCard from "@/components/wallets/ConsolidatedBalanceCard";
 import CopyToast from "@/components/wallets/CopyToast";
+import ReceiveModal from "@/components/wallets/ReceiveModal";
 import WalletDetailsPanel from "@/components/wallets/WalletDetailsPanel";
 import WalletList from "@/components/wallets/WalletList";
 import WalletsFxStrip from "@/components/wallets/WalletsFxStrip";
 import WalletTransferModal from "@/components/wallets/WalletTransferModal";
+import {
+  ConsolidatedBalanceSkeleton,
+  WalletDetailsPanelSkeleton,
+  WalletListSkeleton,
+} from "@/components/wallets/WalletsSkeleton";
 import { useSelectedWallet } from "@/lib/wallets/useSelectedWallet";
 import { useCopyToClipboard } from "@/lib/wallets/useCopyToClipboard";
+import { devLog } from "@/lib/devlog";
 
 function NavButton({
   disabled = false,
@@ -41,15 +48,46 @@ export default function WalletsPage() {
   const { wallets, selectedWallet, setSelectedWallet } = useSelectedWallet();
   const { copy, toast } = useCopyToClipboard();
   const [transferOpen, setTransferOpen] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+
+  const lastReadyRef = useRef(ready);
+  const lastAuthRef = useRef(authenticated);
+  const lastCountRef = useRef(wallets.length);
+
+  useEffect(() => {
+    if (!lastReadyRef.current && ready) {
+      devLog.info("privy", "Privy SDK ready");
+    }
+    if (!lastAuthRef.current && authenticated) {
+      devLog.success("privy", "Authenticated");
+    }
+    if (lastCountRef.current !== wallets.length) {
+      devLog.info("wallets", `Loaded ${wallets.length} wallet${wallets.length === 1 ? "" : "s"}`);
+    }
+    lastReadyRef.current = ready;
+    lastAuthRef.current = authenticated;
+    lastCountRef.current = wallets.length;
+  }, [ready, authenticated, wallets.length]);
+
+  useEffect(() => {
+    devLog.info("wallets", "Connecting to privy.io …");
+    return () => {
+      devLog.info("wallets", "Wallets view unmounted");
+    };
+  }, []);
 
   function handleConnectWallet() {
+    devLog.info("wallets", "Linking external wallet …");
     linkWallet();
   }
 
   async function handleCreateWallet() {
+    devLog.info("wallets", "Creating embedded wallet …");
     try {
       await createWallet();
+      devLog.success("wallets", "Embedded wallet created");
     } catch (err) {
+      devLog.error("wallets", "createWallet failed");
       console.error("[wallets] createWallet failed", err);
     }
   }
@@ -87,12 +125,12 @@ export default function WalletsPage() {
 
       <WalletsFxStrip />
 
-      <ConsolidatedBalanceCard wallets={wallets} />
+      {privySyncing ? <ConsolidatedBalanceSkeleton /> : <ConsolidatedBalanceCard wallets={wallets} />}
 
       {privySyncing ? (
-        <div className="rounded-2xl border border-dashed border-[#D5D9E6] bg-white p-10 text-center">
-          <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary-500" />
-          <p className="mt-4 text-sm text-[#7E8498]">Preparing your wallets…</p>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+          <WalletListSkeleton />
+          <WalletDetailsPanelSkeleton />
         </div>
       ) : null}
 
@@ -132,6 +170,10 @@ export default function WalletsPage() {
             onCreateWallet={handleCreateWallet}
             onFundWallet={handleFundWallet}
             onSendFromWallet={handleSendFromWallet}
+            onReceiveToWallet={(address) => {
+              setSelectedWallet(address);
+              setReceiveOpen(true);
+            }}
           />
 
           <WalletDetailsPanel wallet={selectedWallet} />
@@ -143,6 +185,12 @@ export default function WalletsPage() {
         onClose={() => setTransferOpen(false)}
         source={selectedWallet}
         ownedWallets={wallets}
+      />
+
+      <ReceiveModal
+        open={receiveOpen}
+        onClose={() => setReceiveOpen(false)}
+        wallet={selectedWallet}
       />
 
       <CopyToast message={toast.message} visible={toast.visible} />

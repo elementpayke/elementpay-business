@@ -42,10 +42,17 @@ export function useSelectedWallet() {
     return wallets[0];
   }, [wallets, selectedAddress, walletPreference]);
 
-  // Repair stale selection when the persisted address is no longer linked.
+  // Seed selection on first load (default to the embedded ElementPay wallet
+  // when present) and repair stale selections when a persisted address is no
+  // longer linked.
   useEffect(() => {
-    if (!selectedAddress) return;
     if (wallets.length === 0) return;
+    if (!selectedAddress) {
+      const emb = wallets.find((w) => w.kind === "embedded");
+      const next = emb?.address ?? selectedWallet?.address ?? wallets[0]?.address ?? null;
+      if (next) setSelectedAddress(next);
+      return;
+    }
     if (!wallets.some((w) => same(w.address, selectedAddress))) {
       setSelectedAddress(selectedWallet?.address ?? null);
     }

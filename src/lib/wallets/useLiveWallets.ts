@@ -16,7 +16,7 @@ const kindOf = (w: ConnectedWallet): WalletKind =>
 
 const labelFor = (w: ConnectedWallet, ens?: string | null) => {
   if (ens) return ens;
-  if (kindOf(w) === "embedded") return "Embedded wallet";
+  if (kindOf(w) === "embedded") return "ElementPay Wallet";
   switch (w.walletClientType) {
     case "metamask":
       return "MetaMask";

@@ -88,3 +88,16 @@ body {
 ::selection {
   background: rgba(65, 58, 203, 0.16);
 }
+
+@keyframes processing-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-processing-bar {
+  animation: processing-bar 1.6s ease-in-out infinite;
+}
