@@ -101,3 +101,22 @@ body {
 .animate-processing-bar {
   animation: processing-bar 1.6s ease-in-out infinite;
 }
+
+@keyframes deposit-loading {
+  0% {
+    width: 0%;
+    margin-left: 0%;
+  }
+  50% {
+    width: 75%;
+    margin-left: 25%;
+  }
+  100% {
+    width: 0%;
+    margin-left: 100%;
+  }
+}
+
+.deposit-loading-bar {
+  animation: deposit-loading 1.8s ease-in-out infinite;
+}

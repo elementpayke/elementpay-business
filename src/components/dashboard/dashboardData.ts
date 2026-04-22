@@ -50,6 +50,7 @@ export type PendingPaymentRow = {
 };
 
 export type RecentTransactionRow = {
+  id: string;
   client: string;
   country: CountryCode;
   date: string;
@@ -59,6 +60,17 @@ export type RecentTransactionRow = {
   status: "Successful" | "Failed";
   fees: string;
   amount: string;
+  usdEquivalent: string;
+  recipientEmail: string;
+  recipientPhone: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  fxRate: string;
+  processingTime: string;
+  category: string;
+  reference: string;
+  narration?: string;
 };
 
 export const dashboardTabs: TabItem[] = [
@@ -93,7 +105,7 @@ export const quickActions: QuickAction[] = [
     title: "Deposit Funds",
     description: "Send payments to multiple recipients instantly",
     tone: "neutral",
-    href: "/dashboard/wallets",
+    href: "/dashboard/deposit-money",
   },
 ];
 
@@ -179,6 +191,7 @@ export const pendingPayments: PendingPaymentRow[] = [
 
 export const recentTransactions: RecentTransactionRow[] = [
   {
+    id: "txn-2026-0001",
     client: "Aly Mtsumi",
     country: "KE",
     date: "Dec 12 • 12:34pm",
@@ -188,8 +201,20 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Successful",
     fees: "KES 22.74",
     amount: "-KES 2,274",
+    usdEquivalent: "USD 17.58",
+    recipientEmail: "aly.mtsumi@gmail.com",
+    recipientPhone: "+254 712 345 678",
+    bankName: "Safaricom M-Pesa",
+    accountNumber: "+254 712 345 678",
+    accountName: "Aly Mtsumi",
+    fxRate: "1 USD = 129.32 KES",
+    processingTime: "Instant",
+    category: "Vendor payout",
+    reference: "INV-2024-0156",
+    narration: "Monthly retainer",
   },
   {
+    id: "txn-2026-0002",
     client: "Sarah Okonkwo",
     country: "NG",
     date: "Dec 12 • 12:34pm",
@@ -199,8 +224,19 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Successful",
     fees: "NGN 234",
     amount: "+KES 2,274",
+    usdEquivalent: "USD 17.58",
+    recipientEmail: "sarah.okonkwo@elementpay.io",
+    recipientPhone: "+234 803 111 2345",
+    bankName: "GT Bank",
+    accountNumber: "0123456789",
+    accountName: "Sarah Okonkwo",
+    fxRate: "1 USD = 1562.10 NGN",
+    processingTime: "Instant",
+    category: "Invoice collection",
+    reference: "INV-2024-0157",
   },
   {
+    id: "txn-2026-0003",
     client: "Aly Mtsumi",
     country: "KE",
     date: "Dec 12 • 12:34pm",
@@ -210,8 +246,19 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Successful",
     fees: "KES 22.74",
     amount: "-KES 2,274",
+    usdEquivalent: "USD 17.58",
+    recipientEmail: "aly.mtsumi@gmail.com",
+    recipientPhone: "+254 712 345 678",
+    bankName: "Equity Bank Kenya",
+    accountNumber: "1100284729321",
+    accountName: "Aly Mtsumi",
+    fxRate: "1 USD = 129.32 KES",
+    processingTime: "Within 5 minutes",
+    category: "Payroll",
+    reference: "BULK-2024-0042",
   },
   {
+    id: "txn-2026-0004",
     client: "David Mensah",
     country: "GH",
     date: "Dec 12 • 12:34pm",
@@ -221,8 +268,20 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Failed",
     fees: "GHS 14.56",
     amount: "+GHS 1,456",
+    usdEquivalent: "USD 112.05",
+    recipientEmail: "david.mensah@outlook.com",
+    recipientPhone: "+233 244 567 890",
+    bankName: "Ecobank Ghana",
+    accountNumber: "0290123456789",
+    accountName: "David Mensah",
+    fxRate: "1 USD = 12.99 GHS",
+    processingTime: "—",
+    category: "Wallet top-up",
+    reference: "DEP-2024-0071",
+    narration: "Declined: destination bank timed out",
   },
   {
+    id: "txn-2026-0005",
     client: "Sarah Okonkwo",
     country: "NG",
     date: "Dec 12 • 12:34pm",
@@ -232,8 +291,19 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Successful",
     fees: "NGN 22.74",
     amount: "-NGN 2,274",
+    usdEquivalent: "USD 1.46",
+    recipientEmail: "sarah.okonkwo@elementpay.io",
+    recipientPhone: "+234 803 111 2345",
+    bankName: "Access Bank",
+    accountNumber: "0092837465",
+    accountName: "Sarah Okonkwo",
+    fxRate: "1 USD = 1562.10 NGN",
+    processingTime: "Instant",
+    category: "Vendor payout",
+    reference: "SP-2024-0211",
   },
   {
+    id: "txn-2026-0006",
     client: "David Mensah",
     country: "GH",
     date: "Dec 12 • 12:34pm",
@@ -243,8 +313,19 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Successful",
     fees: "GHS 22.74",
     amount: "+GHS 2,274",
+    usdEquivalent: "USD 175.06",
+    recipientEmail: "david.mensah@outlook.com",
+    recipientPhone: "+233 244 567 890",
+    bankName: "MTN Mobile Money",
+    accountNumber: "+233 244 567 890",
+    accountName: "David Mensah",
+    fxRate: "1 USD = 12.99 GHS",
+    processingTime: "Instant",
+    category: "Invoice collection",
+    reference: "INV-2024-0160",
   },
   {
+    id: "txn-2026-0007",
     client: "Aly Mtsumi",
     country: "KE",
     date: "Dec 12 • 12:34pm",
@@ -254,8 +335,19 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Successful",
     fees: "KES 22.74",
     amount: "-KES 2,274",
+    usdEquivalent: "USD 17.58",
+    recipientEmail: "aly.mtsumi@gmail.com",
+    recipientPhone: "+254 712 345 678",
+    bankName: "Safaricom M-Pesa",
+    accountNumber: "+254 712 345 678",
+    accountName: "Aly Mtsumi",
+    fxRate: "1 USD = 129.32 KES",
+    processingTime: "Instant",
+    category: "Vendor payout",
+    reference: "SP-2024-0212",
   },
   {
+    id: "txn-2026-0008",
     client: "Sarah Okonkwo",
     country: "NG",
     date: "Dec 12 • 12:34pm",
@@ -265,8 +357,19 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Successful",
     fees: "NGN 22.74",
     amount: "-NGN 2,274",
+    usdEquivalent: "USD 1.46",
+    recipientEmail: "sarah.okonkwo@elementpay.io",
+    recipientPhone: "+234 803 111 2345",
+    bankName: "Zenith Bank",
+    accountNumber: "2098371829",
+    accountName: "Sarah Okonkwo",
+    fxRate: "1 USD = 1562.10 NGN",
+    processingTime: "Instant",
+    category: "Vendor payout",
+    reference: "SP-2024-0213",
   },
   {
+    id: "txn-2026-0009",
     client: "Aly Mtsumi",
     country: "KE",
     date: "Dec 12 • 12:34pm",
@@ -276,8 +379,19 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Successful",
     fees: "KES 22.74",
     amount: "-KES 2,274",
+    usdEquivalent: "USD 17.58",
+    recipientEmail: "aly.mtsumi@gmail.com",
+    recipientPhone: "+254 712 345 678",
+    bankName: "KCB Bank",
+    accountNumber: "1203344556677",
+    accountName: "Aly Mtsumi",
+    fxRate: "1 USD = 129.32 KES",
+    processingTime: "Within 5 minutes",
+    category: "Vendor payout",
+    reference: "SP-2024-0214",
   },
   {
+    id: "txn-2026-0010",
     client: "David Mensah",
     country: "GH",
     date: "Dec 12 • 12:34pm",
@@ -287,5 +401,15 @@ export const recentTransactions: RecentTransactionRow[] = [
     status: "Successful",
     fees: "GHS 22.74",
     amount: "+GHS 2,274",
+    usdEquivalent: "USD 175.06",
+    recipientEmail: "david.mensah@outlook.com",
+    recipientPhone: "+233 200 123 456",
+    bankName: "Vodafone Cash",
+    accountNumber: "+233 200 123 456",
+    accountName: "David Mensah",
+    fxRate: "1 USD = 12.99 GHS",
+    processingTime: "Instant",
+    category: "Invoice collection",
+    reference: "INV-2024-0161",
   },
 ];

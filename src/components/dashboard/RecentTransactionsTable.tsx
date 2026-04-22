@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { ArrowDownLeft, ArrowUpRight, Download, SlidersHorizontal, X } from "lucide-react";
 import Flag from "@/components/dashboard/Flag";
 import { StatusBadge, UserAvatar, mergeClasses } from "@/components/dashboard/DashboardPrimitives";
@@ -44,12 +45,16 @@ function DirectionAvatar({
 }
 
 export default function RecentTransactionsTable() {
+  const router = useRouter();
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-[#3F465E]">Recent transactions</h3>
         <div className="flex items-center gap-4 text-sm">
-          <button className="font-medium text-primary-600 transition hover:text-primary-700">
+          <button
+            onClick={() => router.push("/dashboard/transactions")}
+            className="font-medium text-primary-600 transition hover:text-primary-700"
+          >
             View all
           </button>
           <button className="inline-flex items-center gap-1.5 text-[#677089] transition hover:text-[#222945]">
@@ -97,8 +102,12 @@ export default function RecentTransactionsTable() {
             </tr>
           </thead>
           <tbody>
-            {recentTransactions.map((t, i) => (
-              <tr key={i} className="border-t border-[#F0F2F7] text-[#434A61]">
+            {recentTransactions.map((t) => (
+              <tr
+                key={t.id}
+                onClick={() => router.push(`/dashboard/transactions/${t.id}`)}
+                className="cursor-pointer border-t border-[#F0F2F7] text-[#434A61] transition hover:bg-[#FAFBFE]"
+              >
                 <td className="py-3.5 pr-4">
                   <div className="flex items-center gap-2.5">
                     <DirectionAvatar

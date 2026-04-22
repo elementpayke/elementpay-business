@@ -40,18 +40,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[#F7F8FC] text-[#171D32]">
       <div className="w-full border-b border-[#ECEEF5] bg-white">
-        <div className="mx-auto max-w-[1360px] px-5 md:px-7 lg:px-8">
+        <div className="mx-auto max-w-[1480px] px-5 md:px-7 lg:px-10">
           <DashboardNavbar />
         </div>
       </div>
 
       <div className="w-full border-b border-[#ECEEF5] bg-white">
-        <div className="mx-auto max-w-[1360px] px-5 md:px-7 lg:px-8">
+        <div className="mx-auto max-w-[1480px] px-5 md:px-7 lg:px-10">
           <DashboardTabs />
         </div>
       </div>
 
-      <main className="mx-auto max-w-[1360px] px-5 pb-10 pt-6 md:px-7 lg:px-8">{children}</main>
+      <main className="mx-auto max-w-[1480px] px-5 pb-10 pt-6 md:px-7 lg:px-10">{children}</main>
 
       <DevStatusBar />
     </div>

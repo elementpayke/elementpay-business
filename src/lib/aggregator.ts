@@ -116,3 +116,68 @@ export async function createOnRampOrder(params: {
   });
   return parseJson<CreateOrderResponse>(res);
 }
+
+// TODO: confirm endpoint and payload with backend team
+export async function createPaybillOrder(params: {
+  userAddress: string;
+  tokenAddress: string;
+  amountFiat: number;
+  currency?: string;
+}): Promise<CreateOrderResponse> {
+  const payload: Record<string, unknown> = {
+    user_address: params.userAddress,
+    token: params.tokenAddress,
+    order_type: 0,
+    fiat_payload: {
+      amount_fiat: params.amountFiat,
+      cashout_type: "PAYBILL",
+      currency: params.currency ?? "KES",
+    },
+  };
+
+  const res = await fetch(`${API_BASE}/orders/create`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson<CreateOrderResponse>(res);
+}
+
+// TODO: PCI – must use payment processor SDK tokenization before production
+// TODO: confirm endpoint and payload with backend team
+export async function createBankTransferOrder(params: {
+  userAddress: string;
+  tokenAddress: string;
+  amountFiat: number;
+  currency?: string;
+  cardDetails: {
+    cardholder: string;
+    number: string;
+    expiry: string;
+    cvv: string;
+  };
+}): Promise<CreateOrderResponse> {
+  const payload: Record<string, unknown> = {
+    user_address: params.userAddress,
+    token: params.tokenAddress,
+    order_type: 0,
+    fiat_payload: {
+      amount_fiat: params.amountFiat,
+      cashout_type: "CARD",
+      currency: params.currency ?? "USD",
+      card: {
+        cardholder: params.cardDetails.cardholder,
+        number: params.cardDetails.number,
+        expiry: params.cardDetails.expiry,
+        cvv: params.cardDetails.cvv,
+      },
+    },
+  };
+
+  const res = await fetch(`${API_BASE}/orders/create`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return parseJson<CreateOrderResponse>(res);
+}
