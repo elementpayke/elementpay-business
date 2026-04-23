@@ -1,10 +1,5 @@
-import PlaceholderPage from "@/components/dashboard/PlaceholderPage";
+import VerificationStatusPageClient from "@/components/verification/VerificationStatusPageClient";
 
 export default function VerificationPage() {
-  return (
-    <PlaceholderPage
-      title="Verification"
-      description="This placeholder route is reserved for KYC, business verification, and tier upgrade workflows tied to the Tier 2 badge in navigation."
-    />
-  );
+  return <VerificationStatusPageClient />;
 }

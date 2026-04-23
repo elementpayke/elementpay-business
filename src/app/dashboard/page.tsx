@@ -1,5 +1,3 @@
-import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
-import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import ExchangeRateTicker from "@/components/dashboard/ExchangeRateTicker";
 import WalletSummaryCard from "@/components/dashboard/WalletSummaryCard";
 import QuickActions from "@/components/dashboard/QuickActions";

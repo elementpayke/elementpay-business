@@ -4,23 +4,6 @@ import { RefreshCw } from "lucide-react";
 import { useCurrency } from "@/lib/currency/CurrencyContext";
 import type { SupportedCurrency } from "@/lib/currency/config";
 
-function relativeTime(dateString: string | null) {
-  if (!dateString) return "Syncing rates";
-
-  const diffMs = Date.now() - new Date(dateString).getTime();
-  const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
-
-  if (diffSeconds < 60) return "Updated just now";
-
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) {
-    return `Updated ${diffMinutes} min${diffMinutes === 1 ? "" : "s"} ago`;
-  }
-
-  const diffHours = Math.floor(diffMinutes / 60);
-  return `Updated ${diffHours} hr${diffHours === 1 ? "" : "s"} ago`;
-}
-
 function CurrencyButton({
   currency,
   active,
@@ -46,8 +29,7 @@ function CurrencyButton({
 }
 
 export default function CurrencySwitcher() {
-  const { selectedCurrency, setSelectedCurrency, usdKesRate, isRefreshing, lastUpdated } =
-    useCurrency();
+  const { selectedCurrency, setSelectedCurrency, isRefreshing } = useCurrency();
 
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-[#E7EAF3] bg-[#F8F9FD] px-2 py-1">

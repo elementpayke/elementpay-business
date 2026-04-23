@@ -22,7 +22,7 @@ export function validateKenyanPhoneNumber(phoneNumber: string): PhoneValidationR
     };
   }
 
-  const network: "Safaricom" = "Safaricom";
+  const network = "Safaricom" as const;
 
   if (digitsOnly === "254000000000" || digitsOnly === "254111111111") {
     return { isValid: false, error: "Invalid phone number", network };

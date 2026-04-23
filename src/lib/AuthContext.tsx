@@ -50,7 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refreshUser();
+    const timeout = window.setTimeout(() => {
+      void refreshUser();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [refreshUser]);
 
   const login = async (data: LoginSchema) => {

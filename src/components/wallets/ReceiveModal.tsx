@@ -143,13 +143,14 @@ function OnRampTab({ wallet }: { wallet: LiveWallet | null }) {
 
   const amountNumber = Number(amountKes);
   const amountValid = Number.isFinite(amountNumber) && amountNumber > 0;
+  const canFetchQuote = Boolean(wallet && amountValid);
+  const visibleQuoteTokenAmount = canFetchQuote ? quoteTokenAmount : null;
+  const visibleQuoteRate = canFetchQuote ? quoteRate : null;
+  const visibleQuoteFee = canFetchQuote ? quoteFee : null;
 
   // Debounced quote fetch whenever the KES amount or selected token changes.
   useEffect(() => {
     if (!wallet || !amountValid) {
-      setQuoteTokenAmount(null);
-      setQuoteRate(null);
-      setQuoteFee(null);
       return;
     }
     let cancelled = false;
@@ -340,11 +341,11 @@ function OnRampTab({ wallet }: { wallet: LiveWallet | null }) {
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Fetching live rate…
               </span>
-            ) : quoteTokenAmount !== null ? (
+            ) : visibleQuoteTokenAmount !== null ? (
               <>
                 You receive ≈{" "}
                 <span className="font-semibold text-[#1F2640]">
-                  {quoteTokenAmount.toFixed(token.decimals === 18 ? 6 : 4)} {token.symbol}
+                  {visibleQuoteTokenAmount.toFixed(token.decimals === 18 ? 6 : 4)} {token.symbol}
                 </span>
               </>
             ) : amountValid ? (
@@ -353,10 +354,10 @@ function OnRampTab({ wallet }: { wallet: LiveWallet | null }) {
               "Enter an amount to see the live rate"
             )}
           </span>
-          {quoteRate ? <span>1 {token.symbol} ≈ KES {quoteRate.toFixed(2)}</span> : null}
+          {visibleQuoteRate ? <span>1 {token.symbol} ≈ KES {visibleQuoteRate.toFixed(2)}</span> : null}
         </div>
-        {quoteFee ? (
-          <p className="mt-1 text-[11px] text-[#7E8498]">Fee ≈ KES {quoteFee.toFixed(2)}</p>
+        {visibleQuoteFee ? (
+          <p className="mt-1 text-[11px] text-[#7E8498]">Fee ≈ KES {visibleQuoteFee.toFixed(2)}</p>
         ) : null}
       </div>
 
@@ -466,10 +467,10 @@ function TokenSelector({
 function WalletTab({ wallet }: { wallet: LiveWallet | null }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const visibleQrDataUrl = wallet?.address ? qrDataUrl : null;
 
   useEffect(() => {
     if (!wallet?.address) {
-      setQrDataUrl(null);
       return;
     }
     let cancelled = false;
@@ -518,8 +519,8 @@ function WalletTab({ wallet }: { wallet: LiveWallet | null }) {
       </div>
 
       <div className="flex justify-center rounded-xl border border-[#ECEEF5] bg-white p-4">
-        {qrDataUrl ? (
-          <Image src={qrDataUrl} alt="Wallet QR" width={220} height={220} unoptimized />
+        {visibleQrDataUrl ? (
+          <Image src={visibleQrDataUrl} alt="Wallet QR" width={220} height={220} unoptimized />
         ) : (
           <div className="flex h-[220px] w-[220px] items-center justify-center text-xs text-[#8E93A7]">
             <Loader2 className="h-4 w-4 animate-spin" />

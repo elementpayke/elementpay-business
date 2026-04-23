@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowDownToLine, Plus, Send, Wallet as WalletIcon } from "lucide-react";
+import { Plus, Send, Wallet as WalletIcon } from "lucide-react";
 import { mergeClasses } from "@/components/dashboard/DashboardPrimitives";
 import { useCurrency } from "@/lib/currency/CurrencyContext";
 import { shortAddress } from "@/lib/wallets/wallet-selection";
@@ -40,6 +40,7 @@ export default function WalletCard({
   const { formatMoneyFromUsd, selectedCurrency } = useCurrency();
   const isEmbedded = wallet.kind === "embedded";
   const icon = CONNECTOR_ICON[wallet.connectorType];
+  const handleFundWallet = onReceive ?? onFund;
 
   return (
     <button
@@ -103,19 +104,19 @@ export default function WalletCard({
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[#ECEEF5] pt-3 text-xs font-semibold text-primary-600">
-        {onReceive ? (
+        {handleFundWallet ? (
           <span
             role="button"
             tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
-              onReceive();
+              handleFundWallet();
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 e.stopPropagation();
-                onReceive();
+                handleFundWallet();
               }
             }}
             className="inline-flex items-center gap-1.5 transition hover:text-primary-700"

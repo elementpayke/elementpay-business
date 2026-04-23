@@ -24,22 +24,20 @@ function formatRelative(ts: number, now: number): string {
 }
 
 export default function DevStatusBar() {
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(() => {
+    if (typeof window === "undefined") {
+      return process.env.NODE_ENV !== "production";
+    }
+
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    return stored === null ? process.env.NODE_ENV !== "production" : stored === "1";
+  });
   const [entries, setEntries] = useState<DevLogEntry[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Persisted enable flag — default on in dev, off in prod unless user enables.
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === null) {
-      setEnabled(process.env.NODE_ENV !== "production");
-    } else {
-      setEnabled(stored === "1");
-    }
-  }, []);
-
   useEffect(() => {
     if (!enabled) return;
     return subscribeDevLog((next) => setEntries(next));

@@ -93,7 +93,7 @@ export const quickActions: QuickAction[] = [
     title: "Bulk Payment",
     description: "Send payments to multiple recipients instantly",
     tone: "secondary",
-    href: "/dashboard/transactions",
+    href: "/dashboard/bulk-payment",
   },
   {
     title: "Create Invoice",

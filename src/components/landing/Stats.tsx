@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatedCounter } from "./AnimatedCounter";
-import { FadeIn, StaggerChildren } from "./FadeIn";
+import { StaggerChildren } from "./FadeIn";
 import { motion } from "framer-motion";
 
 const stats = [

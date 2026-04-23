@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   // TODO: Integrate with your wallet/blockchain provider
   const wallets = [
     {

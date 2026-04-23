@@ -37,7 +37,6 @@ export default function DepositDetailsStep() {
   const store = useDepositStore();
   const {
     selectedWalletAddress,
-    selectedWalletLabel,
     selectedTokenAddress,
     selectedCurrency,
     amountFiat,
@@ -91,16 +90,17 @@ export default function DepositDetailsStep() {
     [wallets, selectedWalletAddress],
   );
 
+  const canRequestQuote = Boolean(
+    selectedCurrency &&
+      selectedWalletAddress &&
+      selectedTokenAddress &&
+      Number.isFinite(amountFiat) &&
+      amountFiat > 0,
+  );
+
   // Debounced quote fetch → USD equivalent
   useEffect(() => {
-    if (
-      !selectedCurrency ||
-      !selectedWalletAddress ||
-      !selectedTokenAddress ||
-      !Number.isFinite(amountFiat) ||
-      amountFiat <= 0
-    ) {
-      setUsdEquivalent(null);
+    if (!canRequestQuote || !selectedCurrency || !selectedWalletAddress || !selectedTokenAddress) {
       return;
     }
 
@@ -134,7 +134,9 @@ export default function DepositDetailsStep() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [amountFiat, selectedCurrency, selectedWalletAddress, selectedTokenAddress, usdKesRate]);
+  }, [amountFiat, canRequestQuote, selectedCurrency, selectedWalletAddress, selectedTokenAddress, usdKesRate]);
+
+  const displayedUsdEquivalent = canRequestQuote ? usdEquivalent : null;
 
   const paymentMethodSectionVisible = Boolean(
     selectedWalletAddress && selectedCurrency && amountFiat > 0,
@@ -260,8 +262,8 @@ export default function DepositDetailsStep() {
               aria-label="Deposit amount"
             />
             <p className="mt-2 text-sm text-[#9CA3B6]">
-              {usdEquivalent !== null
-                ? `USD ${usdEquivalent.toFixed(2)}`
+              {displayedUsdEquivalent !== null
+                ? `USD ${displayedUsdEquivalent.toFixed(2)}`
                 : amountFiat > 0
                   ? "USD —"
                   : "USD 0.00"}

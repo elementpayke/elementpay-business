@@ -1,0 +1,4 @@
+recipient_name,recipient_identifier,country,payment_method,amount,currency,phone_number,email,bank_name,account_number,paybill_number,reference
+Aly Mitsumi,+254712345678,Kenya,M-Pesa Mobile Money,1500,KES,+254712345678,aly@example.com,,,,Salary Dec 2025
+Sarah Okonkwo,sarah@example.com,Nigeria,Bank Transfer,25000,NGN,+2348031112345,sarah@example.com,GT Bank,0123456789,,Vendor payout
+John Mensah,+233244567890,Ghana,MTN MoMo,800,GHS,+233244567890,john@example.com,,,,Consulting fee

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { countries, paymentMethodsByCountry, type Country, type SavedRecipient } from "@/components/payments/paymentData";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
@@ -46,7 +46,7 @@ function FieldError({ message }: { message?: string }) {
 export default function RecipientForm({ initialValues, selectedRecipient, onSubmit }: RecipientFormProps) {
   const {
     register,
-    watch,
+    control,
     handleSubmit,
     setValue,
     getValues,
@@ -62,8 +62,8 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
     },
   });
 
-  const selectedCountry = watch("country");
-  const selectedMethod = watch("paymentMethod");
+  const selectedCountry = useWatch({ control, name: "country" });
+  const selectedMethod = useWatch({ control, name: "paymentMethod" });
   const methods = selectedCountry ? paymentMethodsByCountry[selectedCountry as Country] : [];
   const needsKenyanPhone =
     selectedCountry === "Kenya" && MPESA_METHODS.has(selectedMethod);

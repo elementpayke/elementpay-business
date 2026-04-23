@@ -58,12 +58,15 @@ export default function ShareReceiptDropdown({ txn }: { txn: RecentTransactionRo
         );
         break;
       case "email":
-        window.location.href = `mailto:?subject=${encodeURIComponent(
-          `Receipt for ${txn.id}`,
-        )}&body=${encodeURIComponent(`${summary}\n\n${receiptUrl}`)}`;
+        window.open(
+          `mailto:?subject=${encodeURIComponent(`Receipt for ${txn.id}`)}&body=${encodeURIComponent(
+            `${summary}\n\n${receiptUrl}`,
+          )}`,
+          "_self",
+        );
         break;
       case "sms":
-        window.location.href = `sms:?body=${encodeURIComponent(`${summary} ${receiptUrl}`)}`;
+        window.open(`sms:?body=${encodeURIComponent(`${summary} ${receiptUrl}`)}`, "_self");
         break;
       case "pdf":
       case "image":
