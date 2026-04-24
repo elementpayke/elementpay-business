@@ -85,7 +85,7 @@ export default function DevStatusBar() {
   return (
     <div className="pointer-events-none fixed bottom-3 left-3 z-50 max-w-[min(92vw,420px)] font-sans">
       <div
-        className={`pointer-events-auto overflow-hidden rounded-lg border border-[#E1E4EE] bg-white/95 text-[12px] text-[#3F465E] shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur transition-all`}
+        className="pointer-events-auto overflow-hidden rounded-lg border border-border bg-surface/95 text-[12px] text-foreground shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur transition-all"
       >
         {/* Footer bar (always visible) */}
         <button
@@ -111,7 +111,7 @@ export default function DevStatusBar() {
 
         {/* Expanded log history */}
         {expanded ? (
-          <div className="border-t border-[#ECEEF5] bg-white">
+          <div className="border-t border-border bg-surface">
             <div className="flex items-center justify-between px-2.5 py-1.5 text-[10px] uppercase tracking-[0.08em] text-[#9298AC]">
               <span>Activity log · {entries.length}</span>
               <div className="flex items-center gap-1">

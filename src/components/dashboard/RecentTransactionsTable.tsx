@@ -24,13 +24,15 @@ function DirectionAvatar({
   return (
     <div className="relative">
       <UserAvatar name={name} />
-      <span className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white rounded-full">
+      <span className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white dark:ring-surface rounded-full">
         <Flag code={country} size={12} />
       </span>
       <span
         className={mergeClasses(
-          "absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-white",
-          direction === "in" ? "bg-[#E8F8EF] text-[#1E9F72]" : "bg-[#FFEFEF] text-[#D95252]",
+          "absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-white dark:ring-surface",
+          direction === "in"
+            ? "bg-[#E8F8EF] text-[#1E9F72] dark:bg-[#0d2b20]"
+            : "bg-[#FFEFEF] text-[#D95252] dark:bg-[#2e0808]",
         )}
         aria-hidden
       >
@@ -49,7 +51,7 @@ export default function RecentTransactionsTable() {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-[#3F465E]">Recent transactions</h3>
+        <h3 className="text-sm font-medium text-foreground">Recent transactions</h3>
         <div className="flex items-center gap-4 text-sm">
           <button
             onClick={() => router.push("/dashboard/transactions")}
@@ -57,7 +59,7 @@ export default function RecentTransactionsTable() {
           >
             View all
           </button>
-          <button className="inline-flex items-center gap-1.5 text-[#677089] transition hover:text-[#222945]">
+          <button className="inline-flex items-center gap-1.5 text-foreground-muted transition hover:text-foreground">
             <Download className="h-3.5 w-3.5" />
             Export CSV
           </button>
@@ -65,7 +67,7 @@ export default function RecentTransactionsTable() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button className="inline-flex items-center gap-2 rounded-full border border-[#E7EAF3] bg-white px-3 py-1.5 text-xs font-medium text-[#677089] transition hover:border-[#D6DBEA] hover:text-[#222945]">
+        <button className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground-muted transition hover:text-foreground">
           <SlidersHorizontal className="h-3.5 w-3.5" />
           Filter
         </button>
@@ -84,7 +86,7 @@ export default function RecentTransactionsTable() {
             </button>
           </span>
         ))}
-        <button className="text-xs font-medium text-[#9CA3B6] transition hover:text-[#2B324B]">
+        <button className="text-xs font-medium text-foreground-muted transition hover:text-foreground">
           Clear all
         </button>
       </div>
@@ -92,7 +94,7 @@ export default function RecentTransactionsTable() {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] text-sm">
           <thead>
-            <tr className="text-left text-[11px] font-medium text-[#9298AC]">
+            <tr className="text-left text-[11px] font-medium text-foreground-muted">
               <th className="pb-3 pr-4 font-medium">Client name</th>
               <th className="pb-3 pr-4 font-medium">Txn type</th>
               <th className="pb-3 pr-4 font-medium">Payment method</th>
@@ -106,7 +108,7 @@ export default function RecentTransactionsTable() {
               <tr
                 key={t.id}
                 onClick={() => router.push(`/dashboard/transactions/${t.id}`)}
-                className="cursor-pointer border-t border-[#F0F2F7] text-[#434A61] transition hover:bg-[#FAFBFE]"
+                className="cursor-pointer border-t border-border text-foreground-muted transition hover:bg-surface-muted"
               >
                 <td className="py-3.5 pr-4">
                   <div className="flex items-center gap-2.5">
@@ -116,8 +118,8 @@ export default function RecentTransactionsTable() {
                       direction={t.direction}
                     />
                     <div>
-                      <p className="text-sm font-medium text-[#1F2640]">{t.client}</p>
-                      <p className="mt-0.5 text-[11px] text-[#9298AC]">{t.date}</p>
+                      <p className="text-sm font-medium text-foreground">{t.client}</p>
+                      <p className="mt-0.5 text-[11px] text-foreground-muted">{t.date}</p>
                     </div>
                   </div>
                 </td>
@@ -126,11 +128,11 @@ export default function RecentTransactionsTable() {
                 <td className="py-3.5 pr-4">
                   <StatusBadge status={t.status} />
                 </td>
-                <td className="py-3.5 pr-4 text-[#9298AC]">{t.fees}</td>
+                <td className="py-3.5 pr-4 text-foreground-muted">{t.fees}</td>
                 <td
                   className={mergeClasses(
                     "py-3.5 font-medium",
-                    t.amount.startsWith("-") ? "text-[#1F2640]" : "text-[#1E9F72]",
+                    t.amount.startsWith("-") ? "text-foreground" : "text-[#1E9F72]",
                   )}
                 >
                   {t.amount}

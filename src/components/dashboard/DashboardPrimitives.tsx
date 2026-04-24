@@ -9,7 +9,7 @@ export { mergeClasses };
 
 export function cardClassName(className?: string) {
   return mergeClasses(
-    "rounded-2xl border border-[#ECEEF5] bg-white",
+    "rounded-2xl border border-border bg-surface",
     className,
   );
 }
@@ -21,7 +21,7 @@ export function SearchInput() {
       <input
         type="search"
         placeholder="Search"
-        className="h-10 w-[260px] rounded-full border border-transparent bg-[#F4F5F9] pl-11 pr-4 text-sm text-[#20243A] outline-none transition focus:border-[#DBDDF0] focus:bg-white"
+        className="h-10 w-[260px] rounded-full border border-transparent bg-[#F4F5F9] pl-11 pr-4 text-sm text-[#20243A] outline-none transition focus:border-[#DBDDF0] focus:bg-white dark:bg-[#1e2235] dark:text-white dark:focus:bg-[#252a3d]"
       />
     </label>
   );
@@ -32,7 +32,7 @@ export function DropdownTrigger({ label, compact = false }: { label: string; com
     <button
       type="button"
       className={mergeClasses(
-        "inline-flex items-center gap-1.5 rounded-lg border border-[#E7E8F1] bg-white text-[#5C637A] transition hover:border-[#D5D8E7] hover:text-[#2A3150]",
+        "inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface text-foreground-muted transition hover:text-foreground",
         compact ? "px-2.5 py-1.5 text-xs font-medium" : "px-3 py-1.5 text-xs font-medium",
       )}
     >
@@ -54,8 +54,8 @@ export function SectionHeader({
   return (
     <div className="flex items-start justify-between gap-3">
       <div>
-        <h2 className="text-sm font-semibold tracking-[-0.01em] text-[#1C2238]">{title}</h2>
-        {description ? <p className="mt-1 text-xs text-[#8D92A6]">{description}</p> : null}
+        <h2 className="text-sm font-semibold tracking-[-0.01em] text-foreground">{title}</h2>
+        {description ? <p className="mt-1 text-xs text-foreground-muted">{description}</p> : null}
       </div>
       {action}
     </div>
@@ -68,17 +68,17 @@ export function TableWrapper({ children, className }: { children: ReactNode; cla
 
 export function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    Pending: "bg-[#FFF4DE] text-[#E89A1F] border border-[#FCE3B0]",
-    Defaulting: "bg-[#FFE5E5] text-[#E25555] border border-[#FBC9C9]",
-    Failed: "bg-[#FFE5E5] text-[#E25555] border border-[#FBC9C9]",
-    Successful: "bg-[#E8F8EF] text-[#1E9F72] border border-[#BFE9D2]",
+    Pending: "bg-[#FFF4DE] text-[#E89A1F] border border-[#FCE3B0] dark:bg-[#2e2008] dark:border-[#5a3e10]",
+    Defaulting: "bg-[#FFE5E5] text-[#E25555] border border-[#FBC9C9] dark:bg-[#2e0808] dark:border-[#5a1010]",
+    Failed: "bg-[#FFE5E5] text-[#E25555] border border-[#FBC9C9] dark:bg-[#2e0808] dark:border-[#5a1010]",
+    Successful: "bg-[#E8F8EF] text-[#1E9F72] border border-[#BFE9D2] dark:bg-[#0d2b20] dark:border-[#1a4d35]",
   };
 
   return (
     <span
       className={mergeClasses(
         "inline-flex rounded-md px-2 py-1 text-[11px] font-medium leading-none",
-        styles[status] ?? "bg-[#F1F3F9] text-[#5D647A] border border-[#E2E5EE]",
+        styles[status] ?? "bg-[#F1F3F9] text-[#5D647A] border border-[#E2E5EE] dark:bg-[#1e2235] dark:text-foreground-muted dark:border-border",
       )}
     >
       {status}
@@ -101,7 +101,7 @@ export function FilterChip({
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition",
         active
           ? "border-primary-200 bg-primary-100/60 text-primary-700"
-          : "border-[#E8EAF2] bg-white text-[#7D8398]",
+          : "border-border bg-surface text-foreground-muted",
       )}
     >
       {label}
@@ -110,7 +110,7 @@ export function FilterChip({
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${label} filter`}
-          className="text-[#A0A6BA] transition hover:text-[#2A3150]"
+          className="text-foreground-muted transition hover:text-foreground"
         >
           ×
         </button>
@@ -145,25 +145,25 @@ export function UserAvatar({ name }: { name: string }) {
 
 export function PageHeader({ title, actions }: { title: string; actions?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-[#E8EBF3] pb-4">
+    <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1">
           <button
             type="button"
             aria-label="Back"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E7EAF3] bg-white text-[#7D8398] transition hover:border-[#CDD2E0] hover:text-[#2A3150]"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface text-foreground-muted transition hover:text-foreground"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             type="button"
             aria-label="Forward"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E7EAF3] bg-white text-[#7D8398] transition hover:border-[#CDD2E0] hover:text-[#2A3150]"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface text-foreground-muted transition hover:text-foreground"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
-        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[#171D32]">{title}</h1>
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">{title}</h1>
       </div>
       {actions}
     </div>
