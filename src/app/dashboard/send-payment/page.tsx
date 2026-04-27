@@ -89,7 +89,7 @@ export default function SendPaymentPage() {
       </div>
 
       {/* ── Content area ────────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-[820px] space-y-4">
+      <div className="mx-auto w-full max-w-[820px] space-y-4">
         {/* Progress stepper */}
         <Stepper currentStep={step} allComplete={allComplete} />
 

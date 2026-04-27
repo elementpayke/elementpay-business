@@ -161,7 +161,7 @@ function StepNode({
   const lColor = labelColor(state);
 
   return (
-    <div className="flex flex-col items-center gap-[6px] min-w-[88px]">
+    <div className="flex flex-col items-center gap-[6px] min-w-0 w-[72px] sm:w-[88px]">
       {/* Icon wrapper – subtle circular background on active/completed */}
       <div
         className="flex items-center justify-center w-9 h-9 rounded-full transition-colors duration-300"
@@ -179,7 +179,7 @@ function StepNode({
 
       {/* Label */}
       <span
-        className="text-[11px] font-medium leading-tight text-center whitespace-nowrap transition-colors duration-300"
+        className="text-[10px] sm:text-[11px] font-medium leading-tight text-center break-words transition-colors duration-300"
         style={{ color: lColor }}
       >
         {label}
@@ -203,7 +203,7 @@ export default function Stepper({
   const c2Active = s2 === "active" || s2 === "completed" || allComplete;
 
   return (
-    <div className="w-full rounded-2xl border border-[#E8EBF3] bg-white px-8 py-5">
+    <div className="w-full rounded-2xl border border-[#E8EBF3] bg-white px-4 py-4 sm:px-8 sm:py-5">
       <div className="flex items-center">
         <StepNode stepNum={1} state={s1} />
         <Connector active={c1Active} />

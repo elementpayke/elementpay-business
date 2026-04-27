@@ -38,20 +38,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F8FC] text-[#171D32]">
+    <div className="min-h-screen overflow-x-hidden bg-[#F7F8FC] text-[#171D32]">
+      {/* Navbar */}
       <div className="w-full border-b border-[#ECEEF5] bg-white">
-        <div className="mx-auto max-w-[1480px] px-5 md:px-7 lg:px-10">
+        <div className="mx-auto max-w-[1480px] px-4 sm:px-5 md:px-7 lg:px-10">
           <DashboardNavbar />
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="w-full border-b border-[#ECEEF5] bg-white">
-        <div className="mx-auto max-w-[1480px] px-5 md:px-7 lg:px-10">
+        <div className="mx-auto max-w-[1480px] px-4 sm:px-5 md:px-7 lg:px-10">
           <DashboardTabs />
         </div>
       </div>
 
-      <main className="mx-auto max-w-[1480px] px-5 pb-10 pt-6 md:px-7 lg:px-10">{children}</main>
+      {/* Page content — extra bottom padding on mobile so buttons clear thumb reach */}
+      <main className="mx-auto w-full max-w-[1480px] overflow-x-hidden px-4 pb-24 pt-6 sm:px-5 sm:pb-16 md:px-7 lg:px-10 lg:pb-10">
+        {children}
+      </main>
 
       <DevStatusBar />
     </div>
