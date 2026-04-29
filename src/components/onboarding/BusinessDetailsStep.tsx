@@ -20,11 +20,16 @@ const MONTHS = [
 ] as const;
 
 const ENTITY_TYPE_OPTIONS: { value: NoahEntityType; label: string }[] = [
-  { value: "SoleProprietorship", label: "Sole proprietorship" },
+  { value: "LimitedLiabilityCompany", label: "Limited Liability Company (LLC)" },
+  { value: "PublicCompany", label: "Public Company" },
+  { value: "SoleProprietorship", label: "Sole Proprietorship" },
   { value: "Partnership", label: "Partnership" },
-  { value: "LLC", label: "LLC" },
   { value: "Corporation", label: "Corporation" },
-  { value: "Other", label: "Other" },
+  { value: "Trust", label: "Trust" },
+  { value: "PrivateFoundation", label: "Private Foundation" },
+  { value: "Charity", label: "Charity" },
+  { value: "NonProfitOrganization", label: "Non-Profit Organization" },
+  { value: "PublicAgency", label: "Public Agency" },
 ];
 
 const RELATIONSHIP_OPTIONS: { value: NoahRelationshipType; label: string }[] = [
@@ -232,6 +237,7 @@ export default function BusinessDetailsStep({
 
     if (!data.address.line1.trim()) return setError("Street address is required.");
     if (!data.address.city.trim()) return setError("City is required.");
+    if (!data.address.postalCode.trim()) return setError("Postcode is required.");
     if (!data.address.countryCode) return setError("Address country is required.");
 
     if (data.stakeholders.length === 0) {
@@ -420,9 +426,7 @@ export default function BusinessDetailsStep({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="addr-postal" className={labelClass}>
-                Postcode <span className="font-normal text-gray-400">(Optional)</span>
-              </label>
+              <label htmlFor="addr-postal" className={labelClass}>Postcode</label>
               <input
                 id="addr-postal"
                 type="text"
@@ -430,6 +434,7 @@ export default function BusinessDetailsStep({
                 onChange={(e) => updateAddress("postalCode", e.target.value)}
                 placeholder="10001"
                 className={inputClass}
+                required
               />
             </div>
             <div>

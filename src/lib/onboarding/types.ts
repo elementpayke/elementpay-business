@@ -15,11 +15,16 @@ export interface BasicInfoProfile {
 
 // NOAH EntityType values, sent verbatim.
 export type NoahEntityType =
+  | "LimitedLiabilityCompany"
+  | "PublicCompany"
   | "SoleProprietorship"
   | "Partnership"
-  | "LLC"
   | "Corporation"
-  | "Other";
+  | "Trust"
+  | "PrivateFoundation"
+  | "Charity"
+  | "NonProfitOrganization"
+  | "PublicAgency";
 
 // NOAH Associate.RelationshipTypes values.
 export type NoahRelationshipType =
@@ -135,6 +140,7 @@ export function isBusinessDetailsComplete(business: BusinessDetails | null): boo
   if (!isCompleteDate(business.incorporationDate)) return false;
   const a = business.address;
   if (!a.line1.trim() || !a.city.trim() || !a.countryCode) return false;
+  if (!a.postalCode.trim()) return false;
   if (business.stakeholders.length === 0) return false;
   return business.stakeholders.every(
     (s) =>

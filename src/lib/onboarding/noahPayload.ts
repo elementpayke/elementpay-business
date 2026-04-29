@@ -8,7 +8,7 @@ import type {
 export interface NoahLegalAddress {
   Street: string;
   City: string;
-  PostCode?: string;
+  PostCode: string;
   State?: string;
   Country: string;
 }
@@ -76,6 +76,10 @@ export function buildNoahPrefillPayload(
   if (!incorporation) {
     throw new Error("IncorporationDate is required");
   }
+  const postCode = business.address.postalCode.trim();
+  if (!postCode) {
+    throw new Error("Postcode is required");
+  }
 
   return {
     subject_id: trimmedSubjectId,
@@ -88,7 +92,7 @@ export function buildNoahPrefillPayload(
       LegalAddress: {
         Street: business.address.line1.trim(),
         City: business.address.city.trim(),
-        PostCode: trimOrUndefined(business.address.postalCode),
+        PostCode: postCode,
         State: trimOrUndefined(business.address.state),
         Country: business.address.countryCode,
       },
