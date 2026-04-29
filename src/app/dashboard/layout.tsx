@@ -30,7 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (loading || !authenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F8FC] text-[#171D32]">
+      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
         <DevStatusBar />
       </div>
@@ -38,20 +38,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F8FC] text-[#171D32]">
-      <div className="w-full border-b border-[#ECEEF5] bg-white">
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Navbar bar */}
+      <div className="w-full border-b border-border bg-surface">
         <div className="mx-auto max-w-[1480px] px-5 md:px-7 lg:px-10">
           <DashboardNavbar />
         </div>
       </div>
 
-      <div className="w-full border-b border-[#ECEEF5] bg-white">
+      {/* Tabs bar */}
+      <div className="w-full border-b border-border bg-surface">
         <div className="mx-auto max-w-[1480px] px-5 md:px-7 lg:px-10">
           <DashboardTabs />
         </div>
       </div>
 
-      <main className="mx-auto max-w-[1480px] px-5 pb-10 pt-6 md:px-7 lg:px-10">{children}</main>
+      <main className="mx-auto max-w-[1480px] px-5 pb-10 pt-6 md:px-7 lg:px-10">
+        {children}
+      </main>
 
       <DevStatusBar />
     </div>

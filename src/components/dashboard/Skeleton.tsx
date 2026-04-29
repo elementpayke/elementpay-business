@@ -18,7 +18,7 @@ export default function Skeleton({
     <span
       aria-hidden
       className={mergeClasses(
-        "block animate-pulse bg-[linear-gradient(90deg,#EEF0F6_0%,#F6F7FB_50%,#EEF0F6_100%)] bg-[length:200%_100%]",
+        "block animate-pulse bg-[linear-gradient(90deg,#EEF0F6_0%,#F6F7FB_50%,#EEF0F6_100%)] dark:bg-[linear-gradient(90deg,#1e2235_0%,#252a3d_50%,#1e2235_100%)] bg-[length:200%_100%]",
         radius,
         className,
       )}

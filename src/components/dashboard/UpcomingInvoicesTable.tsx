@@ -9,11 +9,11 @@ function ClientCell({ name, country }: { name: string; country: CountryCode }) {
     <div className="flex items-center gap-2.5">
       <div className="relative">
         <UserAvatar name={name} />
-        <span className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white rounded-full">
+        <span className="absolute -bottom-0.5 -right-0.5 ring-2 ring-white dark:ring-surface rounded-full">
           <Flag code={country} size={12} />
         </span>
       </div>
-      <span className="text-sm text-[#1F2640]">{name}</span>
+      <span className="text-sm text-foreground">{name}</span>
     </div>
   );
 }
@@ -21,12 +21,12 @@ function ClientCell({ name, country }: { name: string; country: CountryCode }) {
 export default function UpcomingInvoicesTable() {
   return (
     <section className="space-y-4">
-      <h3 className="text-sm font-medium text-[#3F465E]">Upcoming invoice payments</h3>
+      <h3 className="text-sm font-medium text-foreground">Upcoming invoice payments</h3>
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1000px] text-sm">
           <thead>
-            <tr className="text-left text-[11px] font-medium text-[#9298AC]">
+            <tr className="text-left text-[11px] font-medium text-foreground-muted">
               <th className="pb-3 pr-4 font-medium">Client name</th>
               <th className="pb-3 pr-4 font-medium">Receiving wallet</th>
               <th className="pb-3 pr-4 font-medium">Invoice ID</th>
@@ -39,7 +39,7 @@ export default function UpcomingInvoicesTable() {
           </thead>
           <tbody>
             {upcomingInvoices.map((invoice, i) => (
-              <tr key={i} className="border-t border-[#F0F2F7] text-[#434A61]">
+              <tr key={i} className="border-t border-border text-foreground-muted">
                 <td className="py-4 pr-4 align-middle">
                   <ClientCell name={invoice.client} country={invoice.country} />
                 </td>
@@ -55,7 +55,7 @@ export default function UpcomingInvoicesTable() {
                 <td className="py-4 pr-4">
                   <StatusBadge status={invoice.status} />
                 </td>
-                <td className="py-4 font-medium text-[#1F2640]">{invoice.expectedAmount}</td>
+                <td className="py-4 font-medium text-foreground">{invoice.expectedAmount}</td>
               </tr>
             ))}
           </tbody>

@@ -18,11 +18,14 @@ export default function DashboardTabs() {
   const pathname = usePathname();
 
   return (
-    <nav className="overflow-x-auto">
+    <nav className="overflow-x-auto bg-surface">
       <div className="flex min-w-max items-center gap-6">
         {dashboardTabs.map((tab) => {
           const Icon = iconMap[tab.label as keyof typeof iconMap];
-          const active = tab.href === "/dashboard" ? pathname === tab.href : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+          const active =
+            tab.href === "/dashboard"
+              ? pathname === tab.href
+              : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
 
           return (
             <Link
@@ -31,13 +34,13 @@ export default function DashboardTabs() {
               className={`group relative flex items-center gap-2 py-4 text-sm transition ${
                 active
                   ? "font-semibold text-primary-600"
-                  : "font-medium text-[#81879A] hover:text-[#232B45]"
+                  : "font-medium text-foreground-muted hover:text-foreground"
               }`}
             >
               <Icon className="h-4 w-4" />
               <span>{tab.label}</span>
               {tab.badge ? (
-                <span className="rounded-full bg-[#FFE8EE] px-2 py-0.5 text-[10px] font-semibold text-[#FF6B8E]">
+                <span className="rounded-full bg-[#FFE8EE] px-2 py-0.5 text-[10px] font-semibold text-[#FF6B8E] dark:bg-[#3a0d1a]">
                   {tab.badge}
                 </span>
               ) : null}
