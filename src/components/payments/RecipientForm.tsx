@@ -5,9 +5,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { countries, paymentMethodsByCountry, type Country, type SavedRecipient } from "@/components/payments/paymentData";
+import {
+  countries,
+  paymentMethodsByCountry,
+  type Country,
+  type SavedRecipient,
+} from "@/components/payments/paymentData";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
 import { validateKenyanPhoneNumber } from "@/lib/phoneValidation";
+import Flag from "@/components/dashboard/Flag";
 
 const MPESA_METHODS = new Set(["M-Pesa Mobile Money", "M-Pesa Paybill"]);
 
@@ -19,7 +25,10 @@ const recipientSchema = z
     phoneNumber: z.string().optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.country === "Kenya" && MPESA_METHODS.has(value.paymentMethod)) {
+    if (
+      value.country === "Kenya" &&
+      MPESA_METHODS.has(value.paymentMethod)
+    ) {
       const res = validateKenyanPhoneNumber(value.phoneNumber ?? "");
       if (!res.isValid) {
         ctx.addIssue({
@@ -40,10 +49,16 @@ type RecipientFormProps = {
 };
 
 function FieldError({ message }: { message?: string }) {
-  return message ? <p className="mt-2 text-xs text-[#E35D5B]">{message}</p> : null;
+  return message ? (
+    <p className="mt-2 text-xs text-[#E35D5B]">{message}</p>
+  ) : null;
 }
 
-export default function RecipientForm({ initialValues, selectedRecipient, onSubmit }: RecipientFormProps) {
+export default function RecipientForm({
+  initialValues,
+  selectedRecipient,
+  onSubmit,
+}: RecipientFormProps) {
   const {
     register,
     control,
@@ -64,21 +79,30 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
 
   const selectedCountry = useWatch({ control, name: "country" });
   const selectedMethod = useWatch({ control, name: "paymentMethod" });
-  const methods = selectedCountry ? paymentMethodsByCountry[selectedCountry as Country] : [];
+  const methods = selectedCountry
+    ? paymentMethodsByCountry[selectedCountry as Country]
+    : [];
   const needsKenyanPhone =
     selectedCountry === "Kenya" && MPESA_METHODS.has(selectedMethod);
 
+  // Sync from saved-recipient quick-select
   useEffect(() => {
     if (!selectedRecipient) return;
     setValue("email", selectedRecipient.email, { shouldValidate: true });
     setValue("country", selectedRecipient.country, { shouldValidate: true });
-    setValue("paymentMethod", selectedRecipient.paymentMethod, { shouldValidate: true });
-    setValue("phoneNumber", selectedRecipient.phoneNumber ?? "", { shouldValidate: true });
+    setValue("paymentMethod", selectedRecipient.paymentMethod, {
+      shouldValidate: true,
+    });
+    setValue("phoneNumber", selectedRecipient.phoneNumber ?? "", {
+      shouldValidate: true,
+    });
   }, [selectedRecipient, setValue]);
 
+  // Reset payment method when country changes to a new set of options
   useEffect(() => {
     if (!selectedCountry) return;
-    const availableMethods = paymentMethodsByCountry[selectedCountry as Country];
+    const availableMethods =
+      paymentMethodsByCountry[selectedCountry as Country];
     const currentMethod = getValues("paymentMethod");
     if (currentMethod && !availableMethods.includes(currentMethod)) {
       setValue("paymentMethod", "", { shouldValidate: true });
@@ -88,8 +112,11 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
   return (
     <div className={cardClassName("p-4 sm:p-5")}>
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        {/* ── Email ──────────────────────────────────────────────────────── */}
         <div>
-          <label className="mb-2 block text-xs text-[#4D556D]">Recipient&apos;s email address</label>
+          <label className="mb-2 block text-xs text-[#4D556D]">
+            Recipient&apos;s email address
+          </label>
           <input
             {...register("email")}
             placeholder="Enter email address"
@@ -98,13 +125,16 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
           <FieldError message={errors.email?.message} />
         </div>
 
+        {/* ── Country ────────────────────────────────────────────────────── */}
         <div>
-          <label className="mb-2 block text-xs text-[#4D556D]">Recipient&apos;s country</label>
+          <label className="mb-2 block text-xs text-[#4D556D]">
+            Recipient&apos;s country
+          </label>
           <div className="relative">
             <select
               {...register("country")}
-              className="h-12 w-full appearance-none rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
               defaultValue={initialValues?.country ?? ""}
+              className="h-12 w-full appearance-none rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
             >
               <option value="">Select the country of the recipient</option>
               {countries.map((country) => (
@@ -118,13 +148,16 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
           <FieldError message={errors.country?.message} />
         </div>
 
+        {/* ── Payment method ─────────────────────────────────────────────── */}
         <div>
-          <label className="mb-2 block text-xs text-[#4D556D]">How would you like to pay this recipient?</label>
+          <label className="mb-2 block text-xs text-[#4D556D]">
+            How would you like to pay this recipient?
+          </label>
           <div className="relative">
             <select
               {...register("paymentMethod")}
-              className="h-12 w-full appearance-none rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
               defaultValue={initialValues?.paymentMethod ?? ""}
+              className="h-12 w-full appearance-none rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
             >
               <option value="">Select a payment method</option>
               {methods.map((method) => (
@@ -138,48 +171,67 @@ export default function RecipientForm({ initialValues, selectedRecipient, onSubm
           <FieldError message={errors.paymentMethod?.message} />
         </div>
 
+        {/* ── Kenyan M-Pesa phone number ─────────────────────────────────── */}
         {needsKenyanPhone ? (
           <div>
             <label className="mb-2 block text-xs text-[#4D556D]">
               Recipient&apos;s phone number (Safaricom)
             </label>
-            <div className="flex items-stretch gap-2">
-              <div className="inline-flex items-center rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-3 text-sm font-medium text-[#4D556D]">
-                🇰🇪 +254
+
+            {/*
+              Unified container — flag + dial code on the left, input on the right.
+              Mirrors the same pattern used in AmountStep's currency badge.
+            */}
+            <div
+              className="
+                flex h-12 items-center overflow-hidden
+                rounded-xl border border-[#ECEEF4] bg-[#FAFBFE]
+                transition-colors focus-within:border-primary-300 focus-within:bg-white
+              "
+            >
+              {/* Country prefix badge */}
+              <div className="flex shrink-0 items-center gap-2 px-3">
+                <Flag code="KE" size={18} />
+                <span className="text-sm font-medium text-[#4D556D]">
+                  +254
+                </span>
               </div>
+
+              {/* Divider */}
+              <div className="h-6 w-px shrink-0 bg-[#ECEEF4]" />
+
+              {/* Phone input */}
               <input
                 {...register("phoneNumber", {
                   setValueAs: (raw: string) => {
                     const digits = (raw ?? "").replace(/\D/g, "");
                     if (!digits) return "";
                     if (digits.startsWith("254")) return digits;
-                    if (digits.startsWith("0")) return `254${digits.slice(1)}`;
+                    if (digits.startsWith("0"))
+                      return `254${digits.slice(1)}`;
                     return `254${digits}`;
                   },
                 })}
                 inputMode="tel"
                 placeholder="7XX XXX XXX"
-                className="h-12 flex-1 rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
+                className="h-full flex-1 bg-transparent px-4 text-sm text-[#1F2640] outline-none placeholder:text-[#B0B7CE]"
               />
             </div>
+
             <FieldError message={errors.phoneNumber?.message} />
           </div>
         ) : null}
 
-        {methods.length > 0 && !needsKenyanPhone ? (
-          <div className="rounded-xl border border-[#F0F2F7] bg-[#FAFBFE] px-4 py-3 text-sm text-[#2A3150]">
-            <ul className="space-y-2">
-              {methods.map((method) => (
-                <li key={method}>{method}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
+        {/* ── Submit ─────────────────────────────────────────────────────── */}
         <button
           type="submit"
           disabled={!isValid}
-          className="h-12 w-full rounded-xl bg-primary-500 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+          className="
+            h-12 w-full rounded-xl
+            bg-primary-500 text-sm font-semibold text-white
+            transition hover:brightness-105
+            disabled:cursor-not-allowed disabled:opacity-45
+          "
         >
           Proceed to payment amount
         </button>

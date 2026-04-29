@@ -15,7 +15,15 @@ function getDisplayName(email: string): string {
     .join(" ");
 }
 
-function GhostIconButton({ children, ariaLabel }: { children: React.ReactNode; ariaLabel: string }) {
+function GhostIconButton({
+  children,
+  ariaLabel,
+  className = "",
+}: {
+  children: React.ReactNode;
+  ariaLabel: string;
+  className?: string;
+}) {
   return (
     <button
       type="button"
@@ -60,16 +68,21 @@ export default function DashboardNavbar() {
         <GhostIconButton ariaLabel="Notifications">
           <Bell className="h-[18px] w-[18px]" />
         </GhostIconButton>
-        <GhostIconButton ariaLabel="Settings">
+
+        {/* Settings — hidden on mobile */}
+        <GhostIconButton ariaLabel="Settings" className="hidden sm:flex">
           <Settings className="h-[18px] w-[18px]" />
         </GhostIconButton>
+
+        {/* User menu */}
         <UserMenu email={user?.email}>
           <span className="ml-1 flex items-center gap-2 rounded-full px-1 py-1 transition hover:bg-[#F4F5F9] dark:hover:bg-[#1e2235]">
             <UserAvatar name={displayName} />
             <span className="hidden text-sm font-medium text-[#1F2640] dark:text-white sm:inline">
               {displayName}
             </span>
-            <ChevronDown className="mr-1 h-4 w-4 text-[#969CB0]" />
+            {/* Chevron hidden on mobile */}
+            <ChevronDown className="mr-1 hidden h-4 w-4 text-[#969CB0] sm:block" />
           </span>
         </UserMenu>
       </div>
