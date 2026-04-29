@@ -1,14 +1,16 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, ChevronLeft, ChevronRight, RefreshCcw } from "lucide-react";
 import { cardClassName, mergeClasses } from "@/components/dashboard/DashboardPrimitives";
+import PhoneVerificationModal from "@/components/verification/PhoneVerificationModal";
 import VerificationLimitsCard from "@/components/verification/VerificationLimitsCard";
 import VerificationPageSkeleton from "@/components/verification/VerificationSkeleton";
 import VerificationRequirementsCard from "@/components/verification/VerificationRequirementsCard";
 import VerificationTabs from "@/components/verification/VerificationTabs";
 import VerificationTierSummaryCard from "@/components/verification/VerificationTierSummaryCard";
+import { useOnboarding } from "@/lib/onboarding/OnboardingContext";
 import {
   getVerificationDashboardData,
   startVerificationTier,
@@ -18,6 +20,19 @@ import type {
   VerificationTabKey,
   VerificationTier,
 } from "@/lib/verification/types";
+
+async function stubRequestOtp(phone: string): Promise<void> {
+  void phone;
+  await new Promise((resolve) => setTimeout(resolve, 400));
+}
+
+async function stubVerifyOtp(phone: string, code: string): Promise<void> {
+  void phone;
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  if (code === "000000") {
+    throw new Error("Invalid code. Please try again.");
+  }
+}
 
 function extractErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -82,6 +97,7 @@ export default function VerificationStatusPageClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { state: onboardingState, markPhoneVerified } = useOnboarding();
 
   const [data, setData] = useState<VerificationDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,6 +115,21 @@ export default function VerificationStatusPageClient() {
   }, [searchParams]);
 
   const activeTab = urlTab;
+
+  const phoneModalOpen = searchParams.get("action") === "verify-phone";
+  const phoneDisplay = onboardingState.profile?.phoneNumber ?? "";
+
+  const closePhoneModal = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("action");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const handlePhoneVerified = useCallback(() => {
+    markPhoneVerified();
+    closePhoneModal();
+  }, [closePhoneModal, markPhoneVerified]);
 
   useEffect(() => {
     let cancelled = false;
@@ -216,6 +247,15 @@ export default function VerificationStatusPageClient() {
           message={error ?? "Verification data is currently unavailable."}
           onRetry={() => setReloadKey((value) => value + 1)}
         />
+
+        <PhoneVerificationModal
+          open={phoneModalOpen}
+          phoneDisplay={phoneDisplay}
+          onClose={closePhoneModal}
+          onVerified={handlePhoneVerified}
+          requestOtp={stubRequestOtp}
+          verifyOtp={stubVerifyOtp}
+        />
       </section>
     );
   }
@@ -291,6 +331,15 @@ export default function VerificationStatusPageClient() {
           <VerificationLimitsCard profile={selectedLimitProfile} />
         </div>
       </div>
+
+      <PhoneVerificationModal
+        open={phoneModalOpen}
+        phoneDisplay={phoneDisplay}
+        onClose={closePhoneModal}
+        onVerified={handlePhoneVerified}
+        requestOtp={stubRequestOtp}
+        verifyOtp={stubVerifyOtp}
+      />
     </section>
   );
 }

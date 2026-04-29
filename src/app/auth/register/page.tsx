@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, ArrowRight, Loader2, Check, X } from "lucide-react";
+import { ArrowRight, Check, Eye, EyeOff, Loader2, X } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 
 const passwordRules = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -14,9 +15,16 @@ const passwordRules = [
   { label: "One number", test: (p: string) => /\d/.test(p) },
 ];
 
+const inputClass =
+  "w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all";
+
+const labelClass =
+  "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
+
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,26 +34,20 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   const allRulesPass = passwordRules.every((r) => r.test(password));
-  const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
+  const passwordsMatch =
+    password === confirmPassword && confirmPassword.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!allRulesPass) {
-      setError("Password does not meet the requirements.");
-      return;
-    }
-    if (!passwordsMatch) {
-      setError("Passwords do not match.");
-      return;
-    }
+    if (!allRulesPass) return setError("Password does not meet the requirements.");
+    if (!passwordsMatch) return setError("Passwords do not match.");
 
     setLoading(true);
     try {
-      await register({ email, password });
-      // Redirect to verify email with the email as query param
-      router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+      await register({ email: email.trim(), password });
+      router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed. Please try again.");
     } finally {
@@ -59,12 +61,13 @@ export default function RegisterPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      {/* Mobile Logo */}
       <div className="lg:hidden flex items-center gap-2.5 mb-8">
         <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
           <span className="text-white font-bold text-sm">E</span>
         </div>
-        <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">ElementPay</span>
+        <span className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
+          ElementPay
+        </span>
       </div>
 
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
@@ -78,17 +81,17 @@ export default function RegisterPage() {
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
+          role="alert"
           className="mt-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 text-sm px-4 py-3 rounded-xl"
         >
           {error}
         </motion.div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-        {/* Email */}
+      <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Work email
+          <label htmlFor="email" className={labelClass}>
+            Email address
           </label>
           <input
             id="email"
@@ -98,13 +101,12 @@ export default function RegisterPage() {
             required
             autoComplete="email"
             placeholder="you@company.com"
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+            className={inputClass}
           />
         </div>
 
-        {/* Password */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          <label htmlFor="password" className={labelClass}>
             Password
           </label>
           <div className="relative">
@@ -116,19 +118,19 @@ export default function RegisterPage() {
               required
               autoComplete="new-password"
               placeholder="Create a strong password"
-              className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+              className={`${inputClass} pr-11`}
             />
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => setShowPassword((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
               tabIndex={-1}
+              aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
 
-          {/* Password strength indicators */}
           {password.length > 0 && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -144,7 +146,13 @@ export default function RegisterPage() {
                     ) : (
                       <X className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600" />
                     )}
-                    <span className={pass ? "text-tertiary-600 dark:text-tertiary-400" : "text-gray-400 dark:text-gray-500"}>
+                    <span
+                      className={
+                        pass
+                          ? "text-tertiary-600 dark:text-tertiary-400"
+                          : "text-gray-400 dark:text-gray-500"
+                      }
+                    >
                       {rule.label}
                     </span>
                   </div>
@@ -154,9 +162,8 @@ export default function RegisterPage() {
           )}
         </div>
 
-        {/* Confirm Password */}
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          <label htmlFor="confirmPassword" className={labelClass}>
             Confirm password
           </label>
           <div className="relative">
@@ -168,7 +175,7 @@ export default function RegisterPage() {
               required
               autoComplete="new-password"
               placeholder="Re-enter your password"
-              className={`w-full px-4 py-3 pr-11 rounded-xl border bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 transition-all ${
+              className={`w-full h-12 px-4 pr-11 rounded-xl border bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 transition-all ${
                 confirmPassword.length > 0
                   ? passwordsMatch
                     ? "border-tertiary-300 dark:border-tertiary-700 focus:ring-tertiary-500/20 focus:border-tertiary-500"
@@ -178,19 +185,20 @@ export default function RegisterPage() {
             />
             <button
               type="button"
-              onClick={() => setShowConfirm(!showConfirm)}
+              onClick={() => setShowConfirm((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
               tabIndex={-1}
+              aria-label={showConfirm ? "Hide password" : "Show password"}
             >
-              {showConfirm ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+              {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
         <button
           type="submit"
-          disabled={loading || !allRulesPass || !passwordsMatch}
-          className="w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 disabled:bg-primary-300 text-white font-semibold py-3 px-6 rounded-xl transition-all hover:shadow-lg hover:shadow-primary-500/25 disabled:shadow-none disabled:cursor-not-allowed"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 disabled:bg-primary-300 text-white font-semibold h-12 px-6 rounded-xl transition-all hover:shadow-lg hover:shadow-primary-500/25 disabled:shadow-none disabled:cursor-not-allowed"
         >
           {loading ? (
             <Loader2 className="w-4.5 h-4.5 animate-spin" />
@@ -203,11 +211,28 @@ export default function RegisterPage() {
         </button>
       </form>
 
+      <div className="mt-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+        <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+          or
+        </span>
+        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+      </div>
+
+      <div className="mt-6">
+        <SocialAuthButtons />
+      </div>
+
       <p className="mt-6 text-xs text-center text-gray-400 dark:text-gray-500 leading-relaxed">
         By creating an account, you agree to our{" "}
-        <Link href="/terms" className="text-primary-500 hover:underline">Terms of Service</Link>
-        {" "}and{" "}
-        <Link href="/privacy" className="text-primary-500 hover:underline">Privacy Policy</Link>.
+        <Link href="/terms" className="text-primary-500 hover:underline">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="text-primary-500 hover:underline">
+          Privacy Policy
+        </Link>
+        .
       </p>
 
       <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">

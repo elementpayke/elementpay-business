@@ -6,12 +6,15 @@ import { Loader2 } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import DevStatusBar from "@/components/dashboard/DevStatusBar";
+import OnboardingBanner from "@/components/onboarding/OnboardingBanner";
 import { useAuth } from "@/lib/AuthContext";
+import { useOnboarding } from "@/lib/onboarding/OnboardingContext";
 import { devLog } from "@/lib/devlog";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { loading, authenticated } = useAuth();
+  const { ready: onboardingReady, hasBasicInfo } = useOnboarding();
   const lastAuthRef = useRef<boolean | null>(null);
 
   useEffect(() => {
@@ -25,10 +28,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     if (!authenticated) {
       router.replace("/auth/login");
+      return;
     }
-  }, [authenticated, loading, router]);
+    if (onboardingReady && !hasBasicInfo) {
+      router.replace("/onboarding");
+    }
+  }, [authenticated, loading, onboardingReady, hasBasicInfo, router]);
 
-  if (loading || !authenticated) {
+  const gated =
+    loading || !authenticated || !onboardingReady || !hasBasicInfo;
+
+  if (gated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
@@ -54,6 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       <main className="mx-auto max-w-[1480px] px-5 pb-10 pt-6 md:px-7 lg:px-10">
+        <OnboardingBanner />
         {children}
       </main>
 

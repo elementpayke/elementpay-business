@@ -1,20 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const params = useSearchParams();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const justVerified = params.get("verified") === "true";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +54,17 @@ export default function LoginPage() {
       <p className="mt-2 text-gray-500 dark:text-gray-400 text-sm">
         Sign in to your business dashboard
       </p>
+
+      {justVerified && !error && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 flex items-center gap-2 bg-tertiary-100 dark:bg-tertiary-900/30 border border-tertiary-200 dark:border-tertiary-800 text-tertiary-700 dark:text-tertiary-200 text-sm px-4 py-3 rounded-xl"
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          Email verified. Sign in to continue.
+        </motion.div>
+      )}
 
       {error && (
         <motion.div
@@ -129,6 +143,18 @@ export default function LoginPage() {
         </button>
       </form>
 
+      <div className="mt-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+        <span className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+          or
+        </span>
+        <div className="h-px flex-1 bg-gray-200 dark:bg-gray-800" />
+      </div>
+
+      <div className="mt-6">
+        <SocialAuthButtons />
+      </div>
+
       <p className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
         Don&apos;t have an account?{" "}
         <Link
@@ -139,5 +165,19 @@ export default function LoginPage() {
         </Link>
       </p>
     </motion.div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

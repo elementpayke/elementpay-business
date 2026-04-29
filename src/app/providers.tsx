@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/lib/AuthContext";
 import { CurrencyProvider } from "@/lib/currency/CurrencyContext";
+import { OnboardingProvider } from "@/lib/onboarding/OnboardingContext";
 import { wagmiConfig } from "@/lib/wallets/wagmi-config";
 import PrivyAuthSync from "@/components/auth/PrivyAuthSync";
 
@@ -26,7 +27,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <CurrencyProvider>
         <AuthProvider>
           {appId ? <PrivyAuthSync /> : null}
-          {children}
+          <OnboardingProvider>{children}</OnboardingProvider>
         </AuthProvider>
       </CurrencyProvider>
     </ThemeProvider>
@@ -40,7 +41,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <PrivyProvider
       appId={appId}
       config={{
-        loginMethods: ["email", "wallet", "google"],
+        loginMethods: ["email", "wallet", "google", "apple"],
         appearance: {
           theme: "light",
           accentColor: "#413ACB",
