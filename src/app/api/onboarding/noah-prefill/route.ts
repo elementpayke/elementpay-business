@@ -4,6 +4,37 @@ import { NextRequest, NextResponse } from "next/server";
 // NEXT_PUBLIC_API_BASE_URL here because that's a relative rewrite path
 // (`/backend`) that only works from the browser.
 const BACKEND_URL = process.env.INTERNAL_BACKEND_URL ?? "";
+const HOSTED_RETURN_URL = process.env.NOAH_HOSTED_ONBOARDING_RETURN_URL ?? "";
+
+type PrefillRequestBody = {
+  subject_id?: string;
+  subject_type?: string;
+  rail_key?: string;
+  noah_customer_id?: string;
+  noah?: unknown;
+};
+
+function extractErrorMessage(payload: unknown, fallbackStatus: number): string {
+  return (
+    (typeof payload === "object" && payload && "message" in payload &&
+      typeof (payload as { message: unknown }).message === "string"
+      ? (payload as { message: string }).message
+      : null) ?? `Upstream request failed (${fallbackStatus})`
+  );
+}
+
+function getHostedReturnUrl(request: NextRequest): string {
+  if (HOSTED_RETURN_URL && /^https:\/\//i.test(HOSTED_RETURN_URL)) {
+    return HOSTED_RETURN_URL;
+  }
+  const origin = request.nextUrl.origin;
+  if (/^https:\/\//i.test(origin)) {
+    return `${origin.replace(/\/$/, "")}/onboarding`;
+  }
+  throw new Error(
+    "NOAH_HOSTED_ONBOARDING_RETURN_URL must be set to an https URL for hosted onboarding",
+  );
+}
 
 export async function POST(request: NextRequest) {
   const internalKey = process.env.INTERNAL_API_KEY;
@@ -24,39 +55,94 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: unknown;
+  let body: PrefillRequestBody;
   try {
-    body = await request.json();
+    body = (await request.json()) as PrefillRequestBody;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const upstream = `${BACKEND_URL.replace(/\/$/, "")}/internal/psp/noah/payin/virtual-account`;
+  if (!body.subject_id || !body.noah_customer_id || !body.noah) {
+    return NextResponse.json(
+      { error: "subject_id, noah_customer_id and noah are required" },
+      { status: 422 },
+    );
+  }
+
+  const base = BACKEND_URL.replace(/\/$/, "");
+  const prefillUpstream = `${base}/internal/psp/enrollments/noah/prefill-business`;
+  const hostedUpstream = `${base}/internal/psp/enrollments/noah/hosted-onboarding`;
+
+  const subjectType = body.subject_type ?? "organization";
+  const prefillBody = { ...body, subject_type: subjectType };
 
   try {
-    const response = await fetch(upstream, {
+    const prefillResponse = await fetch(prefillUpstream, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Internal-Enroll-Key": internalKey,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(prefillBody),
     });
 
-    const isJson = response.headers.get("content-type")?.includes("application/json");
-    const payload = isJson ? await response.json().catch(() => ({})) : {};
+    const prefillIsJson = prefillResponse.headers
+      .get("content-type")
+      ?.includes("application/json");
+    const prefillPayload = prefillIsJson ? await prefillResponse.json().catch(() => ({})) : {};
 
-    if (!response.ok) {
-      const message =
-        (typeof payload === "object" && payload && "message" in payload &&
-          typeof (payload as { message: unknown }).message === "string"
-          ? (payload as { message: string }).message
-          : null) ??
-        `Upstream request failed (${response.status})`;
-      return NextResponse.json({ error: message, detail: payload }, { status: response.status });
+    if (!prefillResponse.ok) {
+      const message = extractErrorMessage(prefillPayload, prefillResponse.status);
+      return NextResponse.json(
+        { error: message, detail: prefillPayload },
+        { status: prefillResponse.status },
+      );
     }
 
-    return NextResponse.json(payload, { status: 200 });
+    const hostedBody = {
+      subject_id: body.subject_id,
+      subject_type: subjectType,
+      rail_key: body.rail_key ?? "noah",
+      noah_customer_id: body.noah_customer_id,
+      return_url: getHostedReturnUrl(request),
+    };
+
+    const hostedResponse = await fetch(hostedUpstream, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Enroll-Key": internalKey,
+      },
+      body: JSON.stringify(hostedBody),
+    });
+
+    const hostedIsJson = hostedResponse.headers
+      .get("content-type")
+      ?.includes("application/json");
+    const hostedPayload = hostedIsJson ? await hostedResponse.json().catch(() => ({})) : {};
+
+    if (!hostedResponse.ok) {
+      const message = extractErrorMessage(hostedPayload, hostedResponse.status);
+      return NextResponse.json(
+        {
+          error: message,
+          detail: hostedPayload,
+          prefill: prefillPayload,
+        },
+        { status: hostedResponse.status },
+      );
+    }
+
+    const combined = {
+      status: "success",
+      message: "Noah prefill + hosted onboarding initialized",
+      data: {
+        prefill: prefillPayload,
+        hosted: hostedPayload,
+      },
+    };
+
+    return NextResponse.json(combined, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error";
     return NextResponse.json({ error: message }, { status: 502 });

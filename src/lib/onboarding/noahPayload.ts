@@ -26,7 +26,6 @@ export interface NoahAssociate {
 }
 
 export interface NoahBusinessCustomerPrefill {
-  Type: "BusinessCustomerPrefill";
   RegistrationCountry: string;
   CompanyName: string;
   RegistrationNumber: string;
@@ -36,6 +35,13 @@ export interface NoahBusinessCustomerPrefill {
   TaxID?: string;
   PrimaryWebsite?: string;
   Associates: NoahAssociate[];
+}
+
+export interface NoahPrefillEnrollmentRequest {
+  subject_id: string;
+  rail_key: "noah";
+  noah_customer_id: string;
+  noah: NoahBusinessCustomerPrefill;
 }
 
 function dobToIso(dob: DateOfBirth): string | null {
@@ -52,9 +58,19 @@ function trimOrUndefined(value: string): string | undefined {
 
 export function buildNoahPrefillPayload(
   business: BusinessDetails,
-): NoahBusinessCustomerPrefill {
+  subjectId: string,
+  noahCustomerId: string,
+): NoahPrefillEnrollmentRequest {
   if (!business.entityType) {
     throw new Error("EntityType is required");
+  }
+  const trimmedSubjectId = subjectId.trim();
+  if (!trimmedSubjectId) {
+    throw new Error("subject_id is required");
+  }
+  const trimmedNoahCustomerId = noahCustomerId.trim();
+  if (!trimmedNoahCustomerId) {
+    throw new Error("noah_customer_id is required");
   }
   const incorporation = dobToIso(business.incorporationDate);
   if (!incorporation) {
@@ -62,29 +78,33 @@ export function buildNoahPrefillPayload(
   }
 
   return {
-    Type: "BusinessCustomerPrefill",
-    RegistrationCountry: business.registrationCountryCode,
-    CompanyName: business.legalName.trim(),
-    RegistrationNumber: business.registrationNumber.trim(),
-    LegalAddress: {
-      Street: business.address.line1.trim(),
-      City: business.address.city.trim(),
-      PostCode: trimOrUndefined(business.address.postalCode),
-      State: trimOrUndefined(business.address.state),
-      Country: business.address.countryCode,
-    },
-    IncorporationDate: incorporation,
-    EntityType: business.entityType,
-    TaxID: trimOrUndefined(business.taxId),
-    PrimaryWebsite: trimOrUndefined(business.websiteUrl),
-    Associates: business.stakeholders.map((s) => ({
-      ID: s.id,
-      RelationshipTypes: s.relationshipTypes,
-      FullName: {
-        FirstName: s.firstName.trim(),
-        LastName: s.lastName.trim(),
+    subject_id: trimmedSubjectId,
+    rail_key: "noah",
+    noah_customer_id: trimmedNoahCustomerId,
+    noah: {
+      RegistrationCountry: business.registrationCountryCode,
+      CompanyName: business.legalName.trim(),
+      RegistrationNumber: business.registrationNumber.trim(),
+      LegalAddress: {
+        Street: business.address.line1.trim(),
+        City: business.address.city.trim(),
+        PostCode: trimOrUndefined(business.address.postalCode),
+        State: trimOrUndefined(business.address.state),
+        Country: business.address.countryCode,
       },
-      DateOfBirth: dobToIso(s.dateOfBirth) ?? "",
-    })),
+      IncorporationDate: incorporation,
+      EntityType: business.entityType,
+      TaxID: trimOrUndefined(business.taxId),
+      PrimaryWebsite: trimOrUndefined(business.websiteUrl),
+      Associates: business.stakeholders.map((s) => ({
+        ID: s.id,
+        RelationshipTypes: s.relationshipTypes,
+        FullName: {
+          FirstName: s.firstName.trim(),
+          LastName: s.lastName.trim(),
+        },
+        DateOfBirth: dobToIso(s.dateOfBirth) ?? "",
+      })),
+    },
   };
 }

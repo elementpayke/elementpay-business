@@ -9,6 +9,7 @@ import OnboardingStepper, {
   type OnboardingStep,
 } from "@/components/onboarding/OnboardingStepper";
 import PhoneVerificationStep from "@/components/onboarding/PhoneVerificationStep";
+import { useAuth } from "@/lib/AuthContext";
 import { useOnboarding } from "@/lib/onboarding/OnboardingContext";
 import { submitNoahPrefill } from "@/lib/onboarding/noahService";
 import type { BasicInfoProfile, BusinessDetails } from "@/lib/onboarding/types";
@@ -37,6 +38,7 @@ function initialStep(
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const {
     state,
     hasBusinessDetails,
@@ -56,8 +58,12 @@ export default function OnboardingPage() {
 
   const handleBusinessSubmit = async (business: BusinessDetails) => {
     // Surfaces upstream errors to the form via thrown Error.
-    await submitNoahPrefill(business);
+    const result = await submitNoahPrefill(business, user ? String(user.id) : undefined);
     saveBusiness(business);
+    if (result.hostedUrl) {
+      window.location.href = result.hostedUrl;
+      return;
+    }
     setStep("phone");
   };
 

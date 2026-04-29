@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Check, Smartphone, UserRound } from "lucide-react";
+import { Briefcase, Check, Smartphone, UserRound } from "lucide-react";
 
 export type OnboardingStep = "basic-info" | "business-details" | "phone";
 
@@ -12,7 +12,7 @@ interface StepDef {
 
 const STEPS: StepDef[] = [
   { key: "basic-info", label: "Basic Info", icon: UserRound },
-  { key: "business-details", label: "Business Details", icon: Building2 },
+  { key: "business-details", label: "Business Details", icon: Briefcase },
   { key: "phone", label: "Phone Verification", icon: Smartphone },
 ];
 
@@ -43,17 +43,15 @@ export default function OnboardingStepper({
   basicInfoDone: boolean;
   businessDetailsDone: boolean;
 }) {
-  const order: OnboardingStep[] = ["basic-info", "business-details", "phone"];
-  const currentIdx = order.indexOf(current);
+  const stepIndex = STEPS.findIndex((s) => s.key === current);
 
   const getState = (key: OnboardingStep): StepState => {
     if (key === current) return "active";
-    const idx = order.indexOf(key);
-    if (idx < currentIdx) {
-      if (key === "basic-info") return basicInfoDone ? "done" : "upcoming";
-      if (key === "business-details") return businessDetailsDone ? "done" : "upcoming";
-      return "done";
-    }
+    const keyIndex = STEPS.findIndex((s) => s.key === key);
+    if (keyIndex < stepIndex) return "done";
+    // Also treat as done if the user has already completed that step
+    if (key === "basic-info" && basicInfoDone) return "done";
+    if (key === "business-details" && businessDetailsDone) return "done";
     return "upcoming";
   };
 
@@ -66,8 +64,7 @@ export default function OnboardingStepper({
         const state = getState(step.key);
         const Icon = step.icon;
         const isLast = idx === STEPS.length - 1;
-        const nextState = !isLast ? getState(STEPS[idx + 1].key) : "upcoming";
-        const connectorDone = state === "done" || (state === "active" && nextState !== "upcoming");
+        const connectorDone = getState(STEPS[idx + 1]?.key as OnboardingStep) !== "upcoming";
 
         return (
           <li
