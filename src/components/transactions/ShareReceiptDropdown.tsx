@@ -59,9 +59,7 @@ export default function ShareReceiptDropdown({ txn }: { txn: RecentTransactionRo
         break;
       case "email":
         window.open(
-          `mailto:?subject=${encodeURIComponent(`Receipt for ${txn.id}`)}&body=${encodeURIComponent(
-            `${summary}\n\n${receiptUrl}`,
-          )}`,
+          `mailto:?subject=${encodeURIComponent(`Receipt for ${txn.id}`)}&body=${encodeURIComponent(`${summary}\n\n${receiptUrl}`)}`,
           "_self",
         );
         break;
@@ -91,14 +89,14 @@ export default function ShareReceiptDropdown({ txn }: { txn: RecentTransactionRo
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 text-sm font-semibold text-primary-600 transition hover:text-primary-700"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-primary-600 transition hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
       >
         <Share2 className="h-4 w-4" />
         Share receipt
       </button>
 
-      {open ? (
-        <div className="absolute right-0 top-full z-40 mt-3 w-[420px] rounded-2xl border border-[#ECEEF5] bg-white p-4 shadow-[0_24px_60px_rgba(16,24,40,0.14)]">
+      {open && (
+        <div className="absolute right-0 top-full z-40 mt-3 w-[320px] rounded-2xl border border-[#ECEEF5] bg-white p-4 shadow-[0_24px_60px_rgba(16,24,40,0.14)] sm:w-[420px] dark:border-[#252840] dark:bg-[#13162A]">
           <div className="grid grid-cols-3 gap-1">
             {SHARE_OPTIONS.map((opt) => {
               const Icon = opt.icon;
@@ -108,12 +106,12 @@ export default function ShareReceiptDropdown({ txn }: { txn: RecentTransactionRo
                   key={opt.id}
                   type="button"
                   onClick={() => handleShare(opt.id)}
-                  className="flex flex-col items-center gap-2.5 rounded-xl px-2 py-4 text-center transition hover:bg-[#F7F8FC]"
+                  className="flex flex-col items-center gap-2.5 rounded-xl px-2 py-4 text-center transition hover:bg-[#F7F8FC] dark:hover:bg-[#1A1D2E]"
                 >
-                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-100/70 text-primary-600">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-100/70 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400">
                     <Icon className="h-5 w-5" />
                   </span>
-                  <span className="text-xs font-medium text-[#2A3150]">
+                  <span className="text-xs font-medium text-[#2A3150] dark:text-[#C0C6DF]">
                     {isCopied ? "Copied!" : opt.label}
                   </span>
                 </button>
@@ -121,7 +119,7 @@ export default function ShareReceiptDropdown({ txn }: { txn: RecentTransactionRo
             })}
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
