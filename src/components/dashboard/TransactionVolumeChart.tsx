@@ -22,7 +22,7 @@ function VolumeBars() {
       <div className="flex gap-3">
         {/* Y axis labels */}
         <div
-          className="flex flex-col-reverse justify-between pr-1 text-[11px] text-[#A5AAC0]"
+          className="flex flex-col-reverse justify-between pr-1 text-[11px] text-foreground-muted"
           style={{ height: chartH }}
         >
           {yTicks.map((t) => (
@@ -38,7 +38,7 @@ function VolumeBars() {
             style={{ height: chartH }}
           >
             {yTicks.map((t) => (
-              <div key={t} className="h-px w-full bg-[#EEF0F6]" />
+              <div key={t} className="h-px w-full bg-border" />
             ))}
           </div>
 
@@ -68,7 +68,7 @@ function VolumeBars() {
           </div>
 
           {/* X axis labels */}
-          <div className="mt-2 grid grid-cols-12 gap-2 text-[11px] text-[#9298AC]">
+          <div className="mt-2 grid grid-cols-12 gap-2 text-[11px] text-foreground-muted">
             {volumeData.map((d) => (
               <span key={d.month} className="text-center">
                 {d.month}
@@ -87,8 +87,8 @@ export default function TransactionVolumeChart() {
       <div className={cardClassName("p-5 sm:p-6")}>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-[#1C2238]">Transaction Volume Chart</h3>
-            <div className="mt-3 flex flex-wrap items-center gap-4 rounded-full border border-[#ECEEF5] px-3 py-1.5 text-xs text-[#5F6680] w-fit">
+            <h3 className="text-sm font-semibold text-foreground">Transaction Volume Chart</h3>
+            <div className="mt-3 flex flex-wrap items-center gap-4 rounded-full border border-border px-3 py-1.5 text-xs text-foreground-muted w-fit">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-primary-500" />
                 Money In
@@ -107,7 +107,7 @@ export default function TransactionVolumeChart() {
 
       <div className={cardClassName("p-5 sm:p-6")}>
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-sm font-semibold text-[#1C2238]">Top Transaction Currencies</h3>
+          <h3 className="text-sm font-semibold text-foreground">Top Transaction Currencies</h3>
           <DropdownTrigger label="This month" compact />
         </div>
 
@@ -115,17 +115,17 @@ export default function TransactionVolumeChart() {
           {topCurrencies.map((currency) => (
             <div key={currency.code} className="space-y-2">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2 text-sm text-[#3B4263]">
+                <div className="flex min-w-0 items-center gap-2 text-sm text-foreground">
                   <Flag code={flagForCode[currency.code] ?? "KE"} size={18} />
                   <span className="truncate">
                     {currency.name}, {currency.code}
                   </span>
                 </div>
-                <span className="shrink-0 text-xs font-semibold text-[#3B4263]">
+                <span className="shrink-0 text-xs font-semibold text-foreground">
                   {currency.amount}
                 </span>
               </div>
-              <div className="h-1.5 rounded-full bg-[#F1F3F9]">
+              <div className="h-1.5 rounded-full bg-border">
                 <div
                   className="h-1.5 rounded-full bg-primary-500 transition-[width] duration-500 ease-out"
                   style={{ width: `${currency.progress}%` }}

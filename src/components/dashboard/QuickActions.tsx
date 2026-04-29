@@ -22,7 +22,7 @@ const toneMap = {
 export default function QuickActions() {
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium text-[#3F465E]">Quick actions</h3>
+      <h3 className="text-sm font-medium text-foreground">Quick actions</h3>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {quickActions.map((action) => {
@@ -42,8 +42,8 @@ export default function QuickActions() {
                 <Icon className="h-[18px] w-[18px]" />
               </span>
               <div>
-                <h3 className="text-sm font-semibold text-[#1E243A]">{action.title}</h3>
-                <p className="mt-1 text-[11px] leading-4 text-[#8E93A7]">{action.description}</p>
+                <h3 className="text-sm font-semibold text-foreground">{action.title}</h3>
+                <p className="mt-1 text-[11px] leading-4 text-foreground-muted">{action.description}</p>
               </div>
             </Link>
           );
