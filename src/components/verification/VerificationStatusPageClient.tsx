@@ -97,7 +97,7 @@ export default function VerificationStatusPageClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { state: onboardingState, markPhoneVerified } = useOnboarding();
+  const { state: onboardingState } = useOnboarding();
 
   const [data, setData] = useState<VerificationDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,9 +127,8 @@ export default function VerificationStatusPageClient() {
   }, [pathname, router, searchParams]);
 
   const handlePhoneVerified = useCallback(() => {
-    markPhoneVerified();
     closePhoneModal();
-  }, [closePhoneModal, markPhoneVerified]);
+  }, [closePhoneModal]);
 
   useEffect(() => {
     let cancelled = false;

@@ -59,14 +59,22 @@ function findByDial(dial: string): Country | null {
   return COUNTRIES.find((c) => c.dialCode === dial) ?? null;
 }
 
+function findByCode(code: string): Country | null {
+  return COUNTRIES.find((c) => c.code === code) ?? null;
+}
+
+// Kenya is our primary customer base — used as the default for nationality and
+// dial-code when the user has not previously made a choice.
+const DEFAULT_COUNTRY = findByCode("KE");
+
 export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps) {
   const [firstName, setFirstName] = useState(initial?.firstName ?? "");
   const [lastName, setLastName] = useState(initial?.lastName ?? "");
   const [country, setCountry] = useState<Country | null>(
-    initial?.country ? findCountry(initial.country) : null,
+    initial?.country ? findCountry(initial.country) : DEFAULT_COUNTRY,
   );
   const [dialCountry, setDialCountry] = useState<Country | null>(
-    initial?.countryCode ? findByDial(initial.countryCode) : null,
+    initial?.countryCode ? findByDial(initial.countryCode) : DEFAULT_COUNTRY,
   );
   const [phoneNumber, setPhoneNumber] = useState(initial?.phoneNumber ?? "");
   const [dobDay, setDobDay] = useState(initial?.dateOfBirth.day ?? "");

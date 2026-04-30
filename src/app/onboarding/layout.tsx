@@ -11,7 +11,7 @@ import { useOnboarding } from "@/lib/onboarding/OnboardingContext";
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { loading, authenticated, logout } = useAuth();
-  const { ready, tier1Complete, tier1PendingPhone } = useOnboarding();
+  const { ready, tier1Complete } = useOnboarding();
 
   useEffect(() => {
     if (loading) return;
@@ -21,12 +21,12 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
     }
     if (!ready) return;
     // Already done — bounce to dashboard.
-    if (tier1Complete || tier1PendingPhone) {
+    if (tier1Complete) {
       router.replace("/dashboard");
     }
-  }, [loading, authenticated, ready, tier1Complete, tier1PendingPhone, router]);
+  }, [loading, authenticated, ready, tier1Complete, router]);
 
-  const gated = loading || !authenticated || !ready || tier1Complete || tier1PendingPhone;
+  const gated = loading || !authenticated || !ready || tier1Complete;
 
   if (gated) {
     return (

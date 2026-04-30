@@ -117,9 +117,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body.subject_id || !body.noah_customer_id || !body.noah) {
+  if (!body.subject_id || !body.noah) {
     return NextResponse.json(
-      { error: "subject_id, noah_customer_id and noah are required" },
+      { error: "subject_id and noah are required" },
       { status: 422 },
     );
   }
@@ -154,23 +154,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // The client may have minted a placeholder noah_customer_id when no
-    // psp_customer_links row existed yet. Now that prefill has run, the
-    // backend has the canonical external_customer_id — prefer that. Try the
-    // prefill response first (fast path), then fall back to a fresh GET on
-    // /internal/psp/enrollments (authoritative path).
+    // The canonical noah_customer_id is owned by the backend. After a
+    // successful prefill the psp_customer_links row exists, so we can read
+    // external_customer_id either from the prefill response (fast path) or
+    // from /internal/psp/enrollments (authoritative path).
     const echoedId = findExternalCustomerId(prefillPayload);
     const lookedUpId = echoedId
       ? undefined
       : await lookupEnrollmentCustomerId(base, internalKey, subjectType, body.subject_id);
-    const canonicalCustomerId = echoedId ?? lookedUpId ?? body.noah_customer_id;
-    if (canonicalCustomerId !== body.noah_customer_id) {
-      console.log("[noah-prefill] using canonical noah_customer_id from backend", {
-        clientSupplied: body.noah_customer_id,
-        canonical: canonicalCustomerId,
-        source: echoedId ? "prefill-response" : "enrollment-lookup",
+    const canonicalCustomerId = echoedId ?? lookedUpId;
+    if (!canonicalCustomerId) {
+      // Prefill claimed success but we cannot resolve a noah_customer_id.
+      // Fail loudly rather than fabricate one — the frontend never invents ids.
+      console.error("[noah-prefill] prefill succeeded but no noah_customer_id resolved", {
+        prefillPayload,
       });
+      return NextResponse.json(
+        {
+          error:
+            "Backend did not return a noah_customer_id after prefill. Cannot start hosted onboarding.",
+          detail: { prefill: prefillPayload },
+        },
+        { status: 502 },
+      );
     }
+    console.log("[noah-prefill] resolved canonical noah_customer_id", {
+      canonical: canonicalCustomerId,
+      source: echoedId ? "prefill-response" : "enrollment-lookup",
+    });
 
     // Backend rule: user_id MUST be null when subject_type is organization.
     // Only forward user_id for user/individual subjects.

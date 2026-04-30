@@ -1,8 +1,8 @@
 "use client";
 
-import { Briefcase, Check, Smartphone, UserRound } from "lucide-react";
+import { Briefcase, Check, UserRound } from "lucide-react";
 
-export type OnboardingStep = "basic-info" | "business-details" | "phone";
+export type OnboardingStep = "basic-info" | "business-details";
 
 interface StepDef {
   key: OnboardingStep;
@@ -13,7 +13,6 @@ interface StepDef {
 const STEPS: StepDef[] = [
   { key: "basic-info", label: "Basic Info", icon: UserRound },
   { key: "business-details", label: "Business Details", icon: Briefcase },
-  { key: "phone", label: "Phone Verification", icon: Smartphone },
 ];
 
 type StepState = "done" | "active" | "upcoming";

@@ -8,52 +8,26 @@ import BusinessDetailsStep from "@/components/onboarding/BusinessDetailsStep";
 import OnboardingStepper, {
   type OnboardingStep,
 } from "@/components/onboarding/OnboardingStepper";
-import PhoneVerificationStep from "@/components/onboarding/PhoneVerificationStep";
 import { useAuth } from "@/lib/AuthContext";
 import { useOnboarding } from "@/lib/onboarding/OnboardingContext";
 import { submitNoahPrefill } from "@/lib/onboarding/noahService";
 import type { BasicInfoProfile, BusinessDetails } from "@/lib/onboarding/types";
 
-async function stubRequestOtp(phone: string): Promise<void> {
-  void phone;
-  await new Promise((resolve) => setTimeout(resolve, 400));
-}
-
-async function stubVerifyOtp(phone: string, code: string): Promise<void> {
-  void phone;
-  await new Promise((resolve) => setTimeout(resolve, 600));
-  if (code === "000000") {
-    throw new Error("Invalid code. Please try again.");
-  }
-}
-
-function initialStep(
-  hasProfile: boolean,
-  hasBusiness: boolean,
-): OnboardingStep {
-  if (!hasProfile) return "basic-info";
-  if (!hasBusiness) return "business-details";
-  return "phone";
+function initialStep(hasProfile: boolean): OnboardingStep {
+  return hasProfile ? "business-details" : "basic-info";
 }
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const {
-    state,
-    hasBusinessDetails,
-    saveProfile,
-    saveBusiness,
-    markPhoneVerified,
-    markPhoneSkipped,
-  } = useOnboarding();
+  const { state, hasBusinessDetails, saveProfile, saveBusiness } = useOnboarding();
   const [step, setStep] = useState<OnboardingStep>(
-    initialStep(Boolean(state.profile), hasBusinessDetails),
+    initialStep(Boolean(state.profile)),
   );
 
   const handleBasicInfoSubmit = async (profile: BasicInfoProfile) => {
     saveProfile(profile);
-    setStep(hasBusinessDetails ? "phone" : "business-details");
+    setStep("business-details");
   };
 
   const handleBusinessSubmit = async (business: BusinessDetails) => {
@@ -67,20 +41,9 @@ export default function OnboardingPage() {
       window.location.href = result.hostedUrl;
       return;
     }
-    setStep("phone");
-  };
-
-  const handleVerified = async () => {
-    markPhoneVerified();
+    // Backend reports onboarding is already complete (no HostedURL needed).
     router.replace("/dashboard");
   };
-
-  const handleSkip = async () => {
-    markPhoneSkipped();
-    router.replace("/dashboard");
-  };
-
-  const phoneDisplay = state.profile?.phoneNumber ?? "";
 
   return (
     <motion.div
@@ -94,8 +57,7 @@ export default function OnboardingPage() {
           Tier 1 : Basic Verification
         </h1>
         <p className="mt-1.5 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          A few details about you and your business and you&apos;re good to go. You can skip
-          phone verification for now and complete it later.
+          A few details about you and your business and you&apos;re good to go.
         </p>
         <hr className="w-full border-gray-200 dark:border-gray-800 mt-3 sm:my-4" />
       </div>
@@ -109,20 +71,11 @@ export default function OnboardingPage() {
       <div className="rounded-2xl bg-white dark:bg-gray-950 p-0 sm:p-8">
         {step === "basic-info" ? (
           <BasicInfoStep initial={state.profile} onSubmit={handleBasicInfoSubmit} />
-        ) : step === "business-details" ? (
+        ) : (
           <BusinessDetailsStep
             initial={state.business}
             onSubmit={handleBusinessSubmit}
             onBack={() => setStep("basic-info")}
-          />
-        ) : (
-          <PhoneVerificationStep
-            phoneDisplay={phoneDisplay}
-            onVerified={handleVerified}
-            onSkip={handleSkip}
-            onBack={() => setStep("business-details")}
-            requestOtp={stubRequestOtp}
-            verifyOtp={stubVerifyOtp}
           />
         )}
       </div>

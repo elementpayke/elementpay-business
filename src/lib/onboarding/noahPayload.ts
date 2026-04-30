@@ -40,7 +40,7 @@ export interface NoahBusinessCustomerPrefill {
 export interface NoahPrefillEnrollmentRequest {
   subject_id: string;
   rail_key: "noah";
-  noah_customer_id: string;
+  noah_customer_id?: string;
   noah: NoahBusinessCustomerPrefill;
 }
 
@@ -59,7 +59,7 @@ function trimOrUndefined(value: string): string | undefined {
 export function buildNoahPrefillPayload(
   business: BusinessDetails,
   subjectId: string,
-  noahCustomerId: string,
+  noahCustomerId?: string,
 ): NoahPrefillEnrollmentRequest {
   if (!business.entityType) {
     throw new Error("EntityType is required");
@@ -68,10 +68,7 @@ export function buildNoahPrefillPayload(
   if (!trimmedSubjectId) {
     throw new Error("subject_id is required");
   }
-  const trimmedNoahCustomerId = noahCustomerId.trim();
-  if (!trimmedNoahCustomerId) {
-    throw new Error("noah_customer_id is required");
-  }
+  const trimmedNoahCustomerId = noahCustomerId?.trim();
   const incorporation = dobToIso(business.incorporationDate);
   if (!incorporation) {
     throw new Error("IncorporationDate is required");
@@ -84,7 +81,7 @@ export function buildNoahPrefillPayload(
   return {
     subject_id: trimmedSubjectId,
     rail_key: "noah",
-    noah_customer_id: trimmedNoahCustomerId,
+    ...(trimmedNoahCustomerId ? { noah_customer_id: trimmedNoahCustomerId } : {}),
     noah: {
       RegistrationCountry: business.registrationCountryCode,
       CompanyName: business.legalName.trim(),

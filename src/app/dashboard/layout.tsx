@@ -6,7 +6,6 @@ import { Loader2 } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import DevStatusBar from "@/components/dashboard/DevStatusBar";
-import OnboardingBanner from "@/components/onboarding/OnboardingBanner";
 import { useAuth } from "@/lib/AuthContext";
 import { useOnboarding } from "@/lib/onboarding/OnboardingContext";
 import { devLog } from "@/lib/devlog";
@@ -64,7 +63,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       <main className="mx-auto max-w-[1480px] px-5 pb-10 pt-6 md:px-7 lg:px-10">
-        <OnboardingBanner />
         {children}
       </main>
 

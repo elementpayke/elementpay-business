@@ -64,15 +64,11 @@ export interface BusinessDetails {
 export interface OnboardingState {
   profile: BasicInfoProfile | null;
   business: BusinessDetails | null;
-  phoneVerified: boolean;
-  phoneSkipped: boolean;
 }
 
 export const EMPTY_ONBOARDING_STATE: OnboardingState = {
   profile: null,
   business: null,
-  phoneVerified: false,
-  phoneSkipped: false,
 };
 
 function generateId(): string {
@@ -96,13 +92,16 @@ export function emptyStakeholder(): Stakeholder {
   };
 }
 
+// Kenya is our primary customer base, so default country fields to KE.
+const DEFAULT_COUNTRY_CODE = "KE";
+
 export function emptyBusinessDetails(): BusinessDetails {
   return {
     legalName: "",
     registrationNumber: "",
     taxId: "",
     entityType: "",
-    registrationCountryCode: "",
+    registrationCountryCode: DEFAULT_COUNTRY_CODE,
     incorporationDate: { day: "", month: "", year: "" },
     websiteUrl: "",
     address: {
@@ -110,7 +109,7 @@ export function emptyBusinessDetails(): BusinessDetails {
       city: "",
       state: "",
       postalCode: "",
-      countryCode: "",
+      countryCode: DEFAULT_COUNTRY_CODE,
     },
     stakeholders: [emptyStakeholder()],
   };
@@ -154,16 +153,6 @@ export function isBusinessDetailsComplete(business: BusinessDetails | null): boo
 export function isTier1Complete(state: OnboardingState): boolean {
   return (
     isBasicInfoComplete(state.profile) &&
-    isBusinessDetailsComplete(state.business) &&
-    state.phoneVerified
-  );
-}
-
-export function isTier1PendingPhone(state: OnboardingState): boolean {
-  return (
-    isBasicInfoComplete(state.profile) &&
-    isBusinessDetailsComplete(state.business) &&
-    !state.phoneVerified &&
-    state.phoneSkipped
+    isBusinessDetailsComplete(state.business)
   );
 }

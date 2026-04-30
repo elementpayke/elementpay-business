@@ -18,17 +18,6 @@ export class NoahPrefillError extends Error {
   }
 }
 
-function makeUuid(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
 interface EnrollmentLookupRow {
   external_customer_id?: string;
   status?: string;
@@ -115,19 +104,19 @@ export async function submitNoahPrefill(
   }
   const subjectType = "organization";
 
-  // Backend is the source of truth for noah_customer_id. Look up any existing
-  // psp_customer_links row first; only mint a new UUID for the very first
-  // enrollment, after which the backend persists it and future calls reuse it.
+  // Backend is the source of truth for noah_customer_id. The frontend never
+  // generates one. If no psp_customer_links row exists yet, we send the
+  // request without an id and let the backend create the row + assign the id.
   const existing = await fetchExistingNoahCustomerId(resolvedUserId, subjectType);
-  const noahCustomerId = existing?.external_customer_id?.trim() || makeUuid();
-  if (existing?.external_customer_id) {
+  const noahCustomerId = existing?.external_customer_id?.trim();
+  if (noahCustomerId) {
     console.log("[noah] reusing existing noah_customer_id", {
       noahCustomerId,
-      linkStatus: existing.status,
-      lastError: existing.last_error,
+      linkStatus: existing?.status,
+      lastError: existing?.last_error,
     });
   } else {
-    console.log("[noah] minting new noah_customer_id", { noahCustomerId });
+    console.log("[noah] no existing noah_customer_id; backend will assign one");
   }
 
   // For business onboarding subject_type is "organization", and the backend

@@ -14,7 +14,6 @@ import {
   isBasicInfoComplete,
   isBusinessDetailsComplete,
   isTier1Complete,
-  isTier1PendingPhone,
   type BasicInfoProfile,
   type BusinessDetails,
   type OnboardingState,
@@ -28,11 +27,8 @@ interface OnboardingContextValue {
   hasBasicInfo: boolean;
   hasBusinessDetails: boolean;
   tier1Complete: boolean;
-  tier1PendingPhone: boolean;
   saveProfile: (profile: BasicInfoProfile) => void;
   saveBusiness: (business: BusinessDetails) => void;
-  markPhoneVerified: () => void;
-  markPhoneSkipped: () => void;
   reset: () => void;
 }
 
@@ -52,8 +48,6 @@ function readState(key: string | null): OnboardingState {
     return {
       profile: parsed.profile ?? null,
       business: parsed.business ?? null,
-      phoneVerified: Boolean(parsed.phoneVerified),
-      phoneSkipped: Boolean(parsed.phoneSkipped),
     };
   } catch {
     return EMPTY_ONBOARDING_STATE;
@@ -107,22 +101,6 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     [key],
   );
 
-  const markPhoneVerified = useCallback(() => {
-    setState((prev) => {
-      const next = { ...prev, phoneVerified: true, phoneSkipped: false };
-      writeState(key, next);
-      return next;
-    });
-  }, [key]);
-
-  const markPhoneSkipped = useCallback(() => {
-    setState((prev) => {
-      const next = { ...prev, phoneVerified: false, phoneSkipped: true };
-      writeState(key, next);
-      return next;
-    });
-  }, [key]);
-
   const reset = useCallback(() => {
     writeState(key, EMPTY_ONBOARDING_STATE);
     setState(EMPTY_ONBOARDING_STATE);
@@ -135,14 +113,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       hasBasicInfo: isBasicInfoComplete(state.profile),
       hasBusinessDetails: isBusinessDetailsComplete(state.business),
       tier1Complete: isTier1Complete(state),
-      tier1PendingPhone: isTier1PendingPhone(state),
       saveProfile,
       saveBusiness,
-      markPhoneVerified,
-      markPhoneSkipped,
       reset,
     }),
-    [ready, state, saveProfile, saveBusiness, markPhoneVerified, markPhoneSkipped, reset],
+    [ready, state, saveProfile, saveBusiness, reset],
   );
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;
