@@ -18,8 +18,6 @@ export class NoahPrefillError extends Error {
   }
 }
 
-const ANON_SUBJECT_ID_KEY = "onboarding:noah:subject-id";
-
 function makeUuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -31,18 +29,13 @@ function makeUuid(): string {
   });
 }
 
-function getOrCreateAnonSubjectId(): string {
+// TODO: noah_customer_id should be owned by the backend (derived/stored from
+// user_id + rail_key) so the same user maps to the same Noah customer across
+// devices. Until then we key it to the authenticated user id so it's at least
+// stable per (user, browser).
+function getOrCreateNoahCustomerId(userId: number | string): string {
   if (typeof window === "undefined") return makeUuid();
-  const existing = window.localStorage.getItem(ANON_SUBJECT_ID_KEY);
-  if (existing) return existing;
-  const created = makeUuid();
-  window.localStorage.setItem(ANON_SUBJECT_ID_KEY, created);
-  return created;
-}
-
-function getOrCreateNoahCustomerId(subjectId: string): string {
-  if (typeof window === "undefined") return makeUuid();
-  const key = `onboarding:noah:customer-id:${subjectId}`;
+  const key = `onboarding:noah:customer-id:${userId}`;
   const existing = window.localStorage.getItem(key);
   if (existing) return existing;
   const created = makeUuid();
@@ -88,11 +81,19 @@ function extractHostedUrl(data: unknown): string | undefined {
 
 export async function submitNoahPrefill(
   business: BusinessDetails,
-  subjectId?: string,
+  userId: number | string,
 ): Promise<SubmitNoahPrefillResult> {
-  const resolvedSubjectId = subjectId?.trim() || getOrCreateAnonSubjectId();
-  const noahCustomerId = getOrCreateNoahCustomerId(resolvedSubjectId);
-  const payload = buildNoahPrefillPayload(business, resolvedSubjectId, noahCustomerId);
+  const resolvedUserId = String(userId).trim();
+  if (!resolvedUserId) {
+    throw new NoahPrefillError("You must be signed in to start onboarding.", 401);
+  }
+  const noahCustomerId = getOrCreateNoahCustomerId(resolvedUserId);
+  const basePayload = buildNoahPrefillPayload(business, resolvedUserId, noahCustomerId);
+  const numericUserId = Number(resolvedUserId);
+  const payload = {
+    ...basePayload,
+    ...(Number.isFinite(numericUserId) ? { user_id: numericUserId } : {}),
+  };
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   const res = await fetch("/api/onboarding/noah-prefill", {

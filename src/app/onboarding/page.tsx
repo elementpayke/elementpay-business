@@ -57,8 +57,11 @@ export default function OnboardingPage() {
   };
 
   const handleBusinessSubmit = async (business: BusinessDetails) => {
+    if (!user?.id) {
+      throw new Error("You must be signed in to submit business details.");
+    }
     // Surfaces upstream errors to the form via thrown Error.
-    const result = await submitNoahPrefill(business, user ? String(user.id) : undefined);
+    const result = await submitNoahPrefill(business, user.id);
     saveBusiness(business);
     if (result.hostedUrl) {
       window.location.href = result.hostedUrl;

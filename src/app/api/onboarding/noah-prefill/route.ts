@@ -9,6 +9,7 @@ const HOSTED_RETURN_URL = process.env.NOAH_HOSTED_ONBOARDING_RETURN_URL ?? "";
 type PrefillRequestBody = {
   subject_id?: string;
   subject_type?: string;
+  user_id?: number;
   rail_key?: string;
   noah_customer_id?: string;
   noah?: unknown;
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
       rail_key: body.rail_key ?? "noah",
       noah_customer_id: body.noah_customer_id,
       return_url: getHostedReturnUrl(request),
+      ...(typeof body.user_id === "number" ? { user_id: body.user_id } : {}),
     };
 
     const hostedResponse = await fetch(hostedUpstream, {
