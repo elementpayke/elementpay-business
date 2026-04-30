@@ -29,18 +29,44 @@ function makeUuid(): string {
   });
 }
 
-// TODO: noah_customer_id should be owned by the backend (derived/stored from
-// user_id + rail_key) so the same user maps to the same Noah customer across
-// devices. Until then we key it to the authenticated user id so it's at least
-// stable per (user, browser).
-function getOrCreateNoahCustomerId(userId: number | string): string {
-  if (typeof window === "undefined") return makeUuid();
-  const key = `onboarding:noah:customer-id:${userId}`;
-  const existing = window.localStorage.getItem(key);
-  if (existing) return existing;
-  const created = makeUuid();
-  window.localStorage.setItem(key, created);
-  return created;
+interface EnrollmentLookupRow {
+  external_customer_id?: string;
+  status?: string;
+  last_error?: string | null;
+  user_id?: number;
+  subject_type?: string;
+  subject_id?: string;
+  rail_key?: string;
+}
+
+interface EnrollmentLookupEnvelope {
+  status?: string;
+  message?: string;
+  data?: EnrollmentLookupRow;
+}
+
+async function fetchExistingNoahCustomerId(
+  subjectId: string,
+  subjectType: string,
+): Promise<EnrollmentLookupRow | null> {
+  const params = new URLSearchParams({
+    subject_type: subjectType,
+    subject_id: subjectId,
+    rail_key: "noah",
+  });
+  const res = await fetch(`/api/onboarding/noah-enrollment?${params.toString()}`, {
+    method: "GET",
+  });
+  if (res.status === 404) {
+    console.log("[noah] no existing enrollment for", { subjectType, subjectId });
+    return null;
+  }
+  const isJson = res.headers.get("content-type")?.includes("application/json");
+  const payload = isJson ? await res.json().catch(() => ({})) : {};
+  console.log("[noah] enrollment lookup", { status: res.status, payload });
+  if (!res.ok) return null;
+  const envelope = payload as EnrollmentLookupEnvelope;
+  return envelope.data ?? null;
 }
 
 function extractHostedUrl(data: unknown): string | undefined {
@@ -87,7 +113,23 @@ export async function submitNoahPrefill(
   if (!resolvedUserId) {
     throw new NoahPrefillError("You must be signed in to start onboarding.", 401);
   }
-  const noahCustomerId = getOrCreateNoahCustomerId(resolvedUserId);
+  const subjectType = "organization";
+
+  // Backend is the source of truth for noah_customer_id. Look up any existing
+  // psp_customer_links row first; only mint a new UUID for the very first
+  // enrollment, after which the backend persists it and future calls reuse it.
+  const existing = await fetchExistingNoahCustomerId(resolvedUserId, subjectType);
+  const noahCustomerId = existing?.external_customer_id?.trim() || makeUuid();
+  if (existing?.external_customer_id) {
+    console.log("[noah] reusing existing noah_customer_id", {
+      noahCustomerId,
+      linkStatus: existing.status,
+      lastError: existing.last_error,
+    });
+  } else {
+    console.log("[noah] minting new noah_customer_id", { noahCustomerId });
+  }
+
   const basePayload = buildNoahPrefillPayload(business, resolvedUserId, noahCustomerId);
   const numericUserId = Number(resolvedUserId);
   const payload = {
