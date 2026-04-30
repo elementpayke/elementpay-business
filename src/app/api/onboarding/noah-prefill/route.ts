@@ -100,13 +100,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Backend rule: user_id MUST be null when subject_type is organization.
+    // Only forward user_id for user/individual subjects.
+    const includeUserId =
+      subjectType !== "organization" && typeof body.user_id === "number";
     const hostedBody = {
       subject_id: body.subject_id,
       subject_type: subjectType,
       rail_key: body.rail_key ?? "noah",
       noah_customer_id: body.noah_customer_id,
       return_url: getHostedReturnUrl(request),
-      ...(typeof body.user_id === "number" ? { user_id: body.user_id } : {}),
+      user_id: includeUserId ? body.user_id : null,
     };
 
     const hostedResponse = await fetch(hostedUpstream, {

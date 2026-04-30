@@ -130,12 +130,11 @@ export async function submitNoahPrefill(
     console.log("[noah] minting new noah_customer_id", { noahCustomerId });
   }
 
+  // For business onboarding subject_type is "organization", and the backend
+  // requires user_id to be null in that case. We pass subject_type explicitly
+  // so the proxy enforces the rule, and we omit user_id here.
   const basePayload = buildNoahPrefillPayload(business, resolvedUserId, noahCustomerId);
-  const numericUserId = Number(resolvedUserId);
-  const payload = {
-    ...basePayload,
-    ...(Number.isFinite(numericUserId) ? { user_id: numericUserId } : {}),
-  };
+  const payload = { ...basePayload, subject_type: subjectType };
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   const res = await fetch("/api/onboarding/noah-prefill", {
