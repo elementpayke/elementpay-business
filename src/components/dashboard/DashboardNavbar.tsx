@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, ChevronDown, Settings } from "lucide-react";
+import { Bell, ChevronDown, Menu, Settings } from "lucide-react";
 import CurrencySwitcher from "@/components/dashboard/CurrencySwitcher";
 import { SearchInput, UserAvatar } from "@/components/dashboard/DashboardPrimitives";
 import UserMenu from "@/components/navbar/UserMenu";
@@ -15,12 +15,22 @@ function getDisplayName(email: string): string {
     .join(" ");
 }
 
-function GhostIconButton({ children, ariaLabel }: { children: React.ReactNode; ariaLabel: string }) {
+function GhostIconButton({
+  children,
+  ariaLabel,
+  className = "",
+}: {
+  children: React.ReactNode;
+  ariaLabel: string;
+  className?: string;
+}) {
   return (
     <button
       type="button"
       aria-label={ariaLabel}
-      className="flex h-9 w-9 items-center justify-center rounded-full text-[#7D8398] transition hover:bg-[#F4F5F9] hover:text-[#1F2640] dark:hover:bg-[#1e2235] dark:hover:text-white"
+      className={`flex h-8 w-8 items-center justify-center rounded-full text-[#7D8398]
+        transition hover:bg-[#F4F5F9] hover:text-[#1F2640]
+        dark:hover:bg-[#1e2235] dark:hover:text-white ${className}`}
     >
       {children}
     </button>
@@ -33,9 +43,9 @@ export default function DashboardNavbar() {
   const firstName = displayName.split(" ")[0];
 
   return (
-    <header className="grid h-[72px] grid-cols-[auto_1fr_auto] items-center gap-6">
+    <header className="grid h-14 grid-cols-[auto_1fr_auto] items-center gap-3 sm:h-[72px] sm:gap-6">
       {/* Logo */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-500">
           <span className="block h-2.5 w-2.5 rounded-sm bg-white" />
         </div>
@@ -44,7 +54,7 @@ export default function DashboardNavbar() {
         </span>
       </div>
 
-      {/* Greeting */}
+      {/* Greeting — desktop only */}
       <div className="hidden min-w-0 items-center justify-center gap-2 text-sm sm:flex">
         <span className="text-[#7E8498]">Hello,</span>
         <span className="font-semibold text-[#161D35] dark:text-white">{firstName}.</span>
@@ -52,26 +62,37 @@ export default function DashboardNavbar() {
         <span className="text-[#7E8498]">Welcome back!</span>
       </div>
 
-      {/* Right side actions */}
-      <div className="flex items-center gap-2">
+      {/* Right side */}
+      <div className="flex items-center gap-1 sm:gap-2">
+
+        {/* Always visible */}
         <CurrencySwitcher />
-        <SearchInput />
+
+        {/* Desktop only */}
+        <span className="hidden sm:contents">
+          <SearchInput />
+          <GhostIconButton ariaLabel="Settings">
+            <Settings className="h-[18px] w-[18px]" />
+          </GhostIconButton>
+        </span>
+
+        {/* Always visible — theme, bell, avatar */}
         <ThemeToggle />
         <GhostIconButton ariaLabel="Notifications">
-          <Bell className="h-[18px] w-[18px]" />
+          <Bell className="h-[17px] w-[17px]" />
         </GhostIconButton>
-        <GhostIconButton ariaLabel="Settings">
-          <Settings className="h-[18px] w-[18px]" />
-        </GhostIconButton>
+
         <UserMenu email={user?.email}>
-          <span className="ml-1 flex items-center gap-2 rounded-full px-1 py-1 transition hover:bg-[#F4F5F9] dark:hover:bg-[#1e2235]">
+          <span className="flex items-center gap-1.5 rounded-full px-1 py-1
+                          transition hover:bg-[#F4F5F9] dark:hover:bg-[#1e2235]">
             <UserAvatar name={displayName} />
             <span className="hidden text-sm font-medium text-[#1F2640] dark:text-white sm:inline">
               {displayName}
             </span>
-            <ChevronDown className="mr-1 h-4 w-4 text-[#969CB0]" />
+            <ChevronDown className="h-3.5 w-3.5 text-[#969CB0]" />
           </span>
         </UserMenu>
+
       </div>
     </header>
   );

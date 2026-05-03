@@ -116,3 +116,8 @@ html {
 .deposit-loading-bar {
   animation: deposit-loading 1.8s ease-in-out infinite;
 }
+
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
