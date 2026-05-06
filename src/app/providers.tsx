@@ -5,6 +5,7 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
+
 import { AuthProvider } from "@/lib/AuthContext";
 import { CurrencyProvider } from "@/lib/currency/CurrencyContext";
 import { wagmiConfig } from "@/lib/wallets/wagmi-config";
@@ -12,28 +13,29 @@ import PrivyAuthSync from "@/components/auth/PrivyAuthSync";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: { staleTime: 30_000, retry: 1 },
         },
-      }),
-  );
-
-  const tree = (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <CurrencyProvider>
-        <AuthProvider>
-          {appId ? <PrivyAuthSync /> : null}
-          {children}
-        </AuthProvider>
-      </CurrencyProvider>
-    </ThemeProvider>
+      })
   );
 
   if (!appId) {
-    return tree;
+    return (
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <CurrencyProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </CurrencyProvider>
+      </ThemeProvider>
+    );
   }
 
   return (
@@ -52,7 +54,23 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={wagmiConfig}>{tree}</WagmiProvider>
+        <WagmiProvider config={wagmiConfig}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <CurrencyProvider>
+              <AuthProvider>
+                {/* ✅ IMPORTANT: Now safely inside PrivyProvider */}
+                <PrivyAuthSync />
+
+                {children}
+              </AuthProvider>
+            </CurrencyProvider>
+          </ThemeProvider>
+        </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
   );

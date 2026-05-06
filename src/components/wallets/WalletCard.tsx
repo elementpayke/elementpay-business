@@ -1,151 +1,165 @@
 "use client";
 
-import Image from "next/image";
-import { ArrowDownToLine, Plus, Send, Wallet as WalletIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Plus, Send } from "lucide-react";
 import { mergeClasses } from "@/components/dashboard/DashboardPrimitives";
-import { useCurrency } from "@/lib/currency/CurrencyContext";
-import { shortAddress } from "@/lib/wallets/wallet-selection";
 import type { LiveWallet } from "@/lib/wallets/types";
 
-type WalletCardProps = {
-  wallet: LiveWallet;
-  active: boolean;
-  onSelect: () => void;
-  onFund?: () => void;
-  onSend?: () => void;
-  onReceive?: () => void;
+type SupportedCurrency = "USD" | "KES" | "NGN" | "GHS";
+const WALLET_CURRENCIES: SupportedCurrency[] = ["USD", "KES", "NGN", "GHS"];
+
+const CURRENCY_FLAG: Record<SupportedCurrency, string> = {
+  USD: "🇺🇸",
+  KES: "🇰🇪",
+  NGN: "🇳🇬",
+  GHS: "🇬🇭",
 };
 
-const CONNECTOR_ICON: Record<string, string> = {
-  metamask: "/metamask.svg",
-  coinbase_wallet: "/Base_Symbol_Blue.svg",
-};
+function formatBalance(n: number, currency: SupportedCurrency) {
+  return `${currency} ${n.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
 
-function ElementPayMark() {
-  return (
-    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-500">
-      <span className="block h-2.5 w-2.5 rounded-sm bg-white" />
-    </span>
-  );
+function formatUsd(n: number) {
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export default function WalletCard({
   wallet,
   active,
   onSelect,
-  onFund,
   onSend,
   onReceive,
-}: WalletCardProps) {
-  const { formatMoneyFromUsd, selectedCurrency } = useCurrency();
-  const isEmbedded = wallet.kind === "embedded";
-  const icon = CONNECTOR_ICON[wallet.connectorType];
+}: {
+  wallet: LiveWallet;
+  active: boolean;
+  onSelect: () => void;
+  onSend?: () => void;
+  onReceive?: () => void;
+}) {
+  const [currency, setCurrency] = useState<SupportedCurrency>("KES");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  // Guard during loading
+  if (!wallet) return null;
 
   return (
-    <button
-      type="button"
+    <div
       onClick={onSelect}
       className={mergeClasses(
-        "relative w-full overflow-hidden rounded-xl border bg-white p-4 text-left transition",
+        "relative w-full rounded-2xl border bg-surface transition-colors cursor-pointer",
         active
-          ? "border-primary-500 bg-primary-100/25 ring-2 ring-primary-100 shadow-[0_4px_12px_rgba(65,58,203,0.08)]"
-          : "border-[#ECEEF5] hover:border-primary-200",
+          ? "border-primary-500/40 bg-surface"
+          : "border-border hover:bg-surface-muted"
       )}
     >
-      {active ? (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-y-3 left-0 w-1 rounded-r-full bg-primary-500"
-        />
-      ) : null}
+      {/* Active left bar */}
+      {active && (
+        <span className="absolute left-0 top-3 bottom-3 w-0.5 bg-primary-500 rounded-r-full" />
+      )}
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {isEmbedded ? (
-            <ElementPayMark />
-          ) : icon ? (
-            <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#F4F5F9]">
-              <Image src={icon} alt={wallet.connectorType} width={20} height={20} />
-            </span>
-          ) : (
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F4F5F9] text-[#7E8498]">
-              <WalletIcon className="h-3.5 w-3.5" />
-            </span>
-          )}
-          <div>
-            <p className="text-sm font-semibold text-[#1A2138]">{wallet.label}</p>
-            <p className="text-[11px] text-[#8E93A7]">{shortAddress(wallet.address)}</p>
+      <div className="p-4 space-y-3">
+
+        {/* HEADER: wallet name + currency pill */}
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-foreground truncate">
+            {wallet.label}
+          </p>
+
+          <div
+            ref={ref}
+            className="relative shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-medium text-foreground hover:bg-surface transition-colors"
+            >
+              <span>{CURRENCY_FLAG[currency]}</span>
+              <span>{currency}</span>
+              <ChevronDown className="h-3 w-3 text-foreground-muted" />
+            </button>
+
+            {open && (
+              <div className="absolute right-0 mt-1 z-10 w-28 rounded-lg border border-border bg-surface shadow-lg p-1">
+                {WALLET_CURRENCIES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => { setCurrency(c); setOpen(false); }}
+                    className={mergeClasses(
+                      "w-full flex items-center gap-2 text-left px-2 py-1.5 text-xs rounded-md transition-colors",
+                      c === currency
+                        ? "bg-primary-100 text-primary-600 font-medium"
+                        : "text-foreground-muted hover:bg-surface-muted"
+                    )}
+                  >
+                    <span>{CURRENCY_FLAG[c]}</span>
+                    <span>{c}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <span
-          className={mergeClasses(
-            "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em]",
-            active
-              ? "border-primary-500 bg-primary-500 text-white"
-              : isEmbedded
-                ? "border-primary-200 bg-primary-100/60 text-primary-700"
-                : "border-[#E1E4EE] bg-[#F4F5F9] text-[#5F667D]",
+
+        {/* BALANCE */}
+        <div className="space-y-0.5">
+          <p className="text-xs text-foreground-muted">Wallet balance:</p>
+
+          <p className="text-lg font-bold text-foreground">
+            {wallet.balance.isLoading ? (
+              <span className="inline-block h-5 w-36 animate-pulse rounded bg-surface-muted" />
+            ) : (
+              formatBalance(wallet.balance.amount, currency)
+            )}
+          </p>
+
+          <p className="text-xs text-foreground-muted">
+            ~ USD {formatUsd(wallet.balance.usd)}
+          </p>
+        </div>
+
+        {/* ACTIONS */}
+        <div className="flex items-center gap-5 border-t border-border pt-3">
+          {onReceive && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onReceive(); }}
+              className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Fund wallet
+            </button>
           )}
-        >
-          {active ? "Active" : isEmbedded ? "Embedded" : "External"}
-        </span>
-      </div>
-
-      <p className="mt-4 text-xs text-[#8D92A6]">Wallet balance:</p>
-      <div className="mt-1 flex items-baseline gap-2">
-        <p className="text-[22px] font-bold tracking-[-0.02em] text-[#1A2138]">
-          {wallet.balance.isLoading ? "-" : formatAmount(wallet.balance.amount)}
-        </p>
-        <span className="text-sm font-medium text-[#5F667D]">{wallet.balance.symbol}</span>
-      </div>
-      <p className="mt-1 text-xs text-[#8E93A7]">
-        ≈ {formatMoneyFromUsd(wallet.balance.usd)} · on {wallet.balance.chain} · {selectedCurrency}
-      </p>
-
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[#ECEEF5] pt-3 text-xs font-semibold text-primary-600">
-        {onReceive ? (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onReceive();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                onReceive();
-              }
-            }}
-            className="inline-flex items-center gap-1.5 transition hover:text-primary-700"
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onSend?.(); }}
+            className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
           >
-            <Plus className="h-3.5 w-3.5" /> Fund wallet
-          </span>
-        ) : null}
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSend?.();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
-              onSend?.();
-            }
-          }}
-          className="inline-flex items-center gap-1.5 transition hover:text-primary-700"
-        >
-          <Send className="h-3.5 w-3.5" /> Send payment
-        </span>
-      </div>
-    </button>
-  );
-}
+            <Send className="h-3.5 w-3.5" />
+            Send payment
+          </button>
+        </div>
 
-function formatAmount(n: number) {
-  return n.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+      </div>
+    </div>
+  );
 }
