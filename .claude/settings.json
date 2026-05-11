@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Administrator\\\\ELEMENT_PAY\\\\elementpay_business_dashboard\" -Force)",
+      "Bash(Select-Object Name, FullName)",
+      "Bash(Get-Content \"c:\\\\Users\\\\Administrator\\\\ELEMENT_PAY\\\\elementpay_business_dashboard\\\\src\\\\app\\\\providers.tsx\" -TotalCount 60)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"https://dev-mboka-api.elementpay.net/api/health\" -TimeoutSec 10 -UseBasicParsing; \"HTTP $\\($r.StatusCode\\)\" } catch { \"ERROR: $\\($_.Exception.Message\\)\" })",
+      "PowerShell(Test-NetConnection -ComputerName dev-mboka-api.elementpay.net -Port 443)",
+      "PowerShell($body = '{\"email\":\"nelson+probe-2026-05-11@astralyngroup.com\",\"password\":\"D4Cheap1411!&\"}'; try { $r = Invoke-WebRequest -Uri \"https://dev-mboka-api.elementpay.net/api/auth/businesses/login\" -Method POST -ContentType \"application/json\" -Body $body -TimeoutSec 20 -UseBasicParsing; \"HTTP $\\($r.StatusCode\\)`n$\\($r.Content\\)\" } catch { $resp = $_.Exception.Response; if \\($resp\\) { $sr = New-Object System.IO.StreamReader\\($resp.GetResponseStream\\(\\)\\); \"HTTP $\\([int]$resp.StatusCode\\)`n$\\($sr.ReadToEnd\\(\\)\\)\" } else { \"ERROR: $\\($_.Exception.Message\\)\" } })",
+      "PowerShell(\"--- proxy env vars ---\"; \"HTTP_PROXY=$env:HTTP_PROXY\"; \"HTTPS_PROXY=$env:HTTPS_PROXY\"; \"NO_PROXY=$env:NO_PROXY\"; \"http_proxy=$env:http_proxy\"; \"https_proxy=$env:https_proxy\"; \"NODE_EXTRA_CA_CERTS=$env:NODE_EXTRA_CA_CERTS\"; \"NODE_OPTIONS=$env:NODE_OPTIONS\")",
+      "PowerShell(node -e \"const https=require\\('https'\\); const req=https.request\\({host:'dev-mboka-api.elementpay.net',port:443,path:'/api/auth/businesses/login',method:'POST',headers:{'content-type':'application/json'},family:4,timeout:10000},r=>{let b='';r.on\\('data',c=>b+=c\\);r.on\\('end',\\(\\)=>console.log\\('STATUS',r.statusCode,'BODY',b\\)\\)}\\); req.on\\('timeout',\\(\\)=>{console.log\\('TIMEOUT from Node'\\);req.destroy\\(\\)}\\); req.on\\('error',e=>console.log\\('ERROR',e.code,e.message\\)\\); req.write\\(JSON.stringify\\({email:'probe@x.com',password:'x'}\\)\\); req.end\\(\\);\")",
+      "PowerShell(npm install --save-dev cross-env)"
+    ]
+  }
+}

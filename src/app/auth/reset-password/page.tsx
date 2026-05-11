@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -26,14 +26,14 @@ function ResetPasswordForm() {
   const missingParams = !email || !code;
 
   const passwordsMatch = newPassword === confirmPassword;
-  const passwordLongEnough = newPassword.length >= 8;
+  const passwordLongEnough = newPassword.length >= 12;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (!passwordLongEnough) {
-      setError("Password must be at least 8 characters.");
+      setError("Password must be at least 12 characters.");
       return;
     }
     if (!passwordsMatch) {
@@ -151,7 +151,7 @@ function ResetPasswordForm() {
               onChange={(e) => setNewPassword(e.target.value)}
               required
               autoComplete="new-password"
-              placeholder="Min. 8 characters"
+              placeholder="Min. 12 characters"
               className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
             />
             <button
@@ -164,7 +164,7 @@ function ResetPasswordForm() {
             </button>
           </div>
           {newPassword && !passwordLongEnough && (
-            <p className="mt-1.5 text-xs text-red-500">Must be at least 8 characters</p>
+            <p className="mt-1.5 text-xs text-red-500">Must be at least 12 characters</p>
           )}
         </div>
 

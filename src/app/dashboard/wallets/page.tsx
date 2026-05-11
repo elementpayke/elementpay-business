@@ -102,8 +102,6 @@ export default function WalletsPage() {
     setTransferOpen(true);
   }
 
-  // Privy is bridged to our session via PrivyAuthSync — `authenticated` here
-  // becomes true silently once the RS256 JWT exchange completes.
   const privySyncing = !ready || !authenticated;
   const showEmpty = ready && authenticated && wallets.length === 0;
 

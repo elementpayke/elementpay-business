@@ -37,7 +37,7 @@ export default function ProfileHeader() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-primary-700">
                 <BadgeCheck className="h-3.5 w-3.5" />
-                {user?.kyc_verified ? "Verified" : "Unverified"}
+                Unverified
               </div>
               <h1 className="mt-3 text-[30px] font-semibold tracking-[-0.04em] text-[#171D32]">{displayName}</h1>
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-[#6C748C]">

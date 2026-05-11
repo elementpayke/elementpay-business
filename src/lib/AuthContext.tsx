@@ -3,13 +3,14 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import {
   login as apiLogin,
-  register as apiRegister,
-  getMe,
+  registerBusiness as apiRegisterBusiness,
+  getCurrentUser,
   logout as apiLogout,
   isAuthenticated as checkAuth,
   type UserResponse,
   type LoginSchema,
-  type UserCreate,
+  type BusinessSignupSchema,
+  type SignupBusinessResult,
 } from "@/lib/auth";
 
 interface AuthContextType {
@@ -17,7 +18,7 @@ interface AuthContextType {
   loading: boolean;
   authenticated: boolean;
   login: (data: LoginSchema) => Promise<void>;
-  register: (data: UserCreate) => Promise<UserResponse>;
+  register: (data: BusinessSignupSchema) => Promise<SignupBusinessResult>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -36,17 +37,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    try {
-      const me = await getMe();
+    const me = getCurrentUser();
+    if (me) {
       setUser(me);
       setAuthenticated(true);
-    } catch {
+    } else {
       apiLogout();
       setUser(null);
       setAuthenticated(false);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -62,8 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshUser();
   };
 
-  const register = async (data: UserCreate) => {
-    return apiRegister(data);
+  const register = async (data: BusinessSignupSchema) => {
+    return apiRegisterBusiness(data);
   };
 
   const logout = () => {

@@ -28,7 +28,7 @@ function GhostIconButton({
     <button
       type="button"
       aria-label={ariaLabel}
-      className="flex h-9 w-9 items-center justify-center rounded-full text-[#7D8398] transition hover:bg-[#F4F5F9] hover:text-[#1F2640] dark:hover:bg-[#1e2235] dark:hover:text-white"
+      className={`flex h-9 w-9 items-center justify-center rounded-full text-[#7D8398] transition hover:bg-[#F4F5F9] hover:text-[#1F2640] dark:hover:bg-[#1e2235] dark:hover:text-white ${className}`}
     >
       {children}
     </button>

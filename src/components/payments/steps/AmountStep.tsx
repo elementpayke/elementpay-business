@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
-import Flag from "@/components/dashboard/Flag";
 import type { FlagCode } from "@/components/dashboard/Flag";
 import ExchangePill from "@/components/payments/ExchangePill";
 import FeeSummary from "@/components/payments/FeeSummary";

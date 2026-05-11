@@ -92,7 +92,7 @@ Two of these calls (#1 and #3) are the same endpoint. #1 only exists because fro
 
 ## 3. Pain points
 
-1. **Two GETs to the same endpoint per submission.** #1 and #3 in the table above. Wasted round-trip.
+1. **Two GETs to the same endpoint per submission.** #1 and #3 in the table above. Wasted round-trip.r
 2. **First-call dependency on the backend assigning `noah_customer_id`.** The frontend does not generate identifiers. On the first prefill (when no `psp_customer_links` row exists yet) we omit `noah_customer_id` and rely on the backend to assign one and return it. If the backend rejects requests without `noah_customer_id`, first-time onboarding fails. Please confirm this is supported, or add support.
 3. **Two POSTs (prefill + hosted) for what is conceptually one user action.** The frontend always wants both. Doing them as one upstream call would halve the HTTP overhead and remove a partial-failure window where prefill succeeds but hosted fails.
 4. **Prefill response shape is undocumented.** We have to recursively scan it for `external_customer_id` / `noah_customer_id` / `NoahCustomerID`, and fall back to a GET when we can't find it.

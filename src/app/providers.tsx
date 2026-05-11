@@ -9,7 +9,6 @@ import { AuthProvider } from "@/lib/AuthContext";
 import { CurrencyProvider } from "@/lib/currency/CurrencyContext";
 import { OnboardingProvider } from "@/lib/onboarding/OnboardingContext";
 import { wagmiConfig } from "@/lib/wallets/wagmi-config";
-import PrivyAuthSync from "@/components/auth/PrivyAuthSync";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
@@ -26,7 +25,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <CurrencyProvider>
         <AuthProvider>
-          {appId ? <PrivyAuthSync /> : null}
           <OnboardingProvider>{children}</OnboardingProvider>
         </AuthProvider>
       </CurrencyProvider>
@@ -45,7 +43,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         appearance: {
           theme: "light",
           accentColor: "#413ACB",
-          logo: "/elementpay.png",
+          logo: "/coin.svg",
         },
         embeddedWallets: {
           ethereum: { createOnLogin: "users-without-wallets" },

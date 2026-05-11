@@ -15,7 +15,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${creatoDisplay.variable} h-full antialiased`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${creatoDisplay.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <Providers>{children}</Providers>
       </body>

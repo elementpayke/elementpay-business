@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
 
 const passwordRules = [
-  { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
+  { label: "At least 12 characters", test: (p: string) => p.length >= 12 },
   { label: "One uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
   { label: "One lowercase letter", test: (p: string) => /[a-z]/.test(p) },
   { label: "One number", test: (p: string) => /\d/.test(p) },
@@ -25,6 +25,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
 
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,12 +42,18 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
+    const trimmedName = businessName.trim();
+    if (trimmedName.length < 2) return setError("Business name is required.");
     if (!allRulesPass) return setError("Password does not meet the requirements.");
     if (!passwordsMatch) return setError("Passwords do not match.");
 
     setLoading(true);
     try {
-      await register({ email: email.trim(), password });
+      await register({
+        business_name: trimmedName,
+        email: email.trim(),
+        password,
+      });
       router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed. Please try again.");
@@ -90,8 +97,26 @@ export default function RegisterPage() {
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
         <div>
+          <label htmlFor="businessName" className={labelClass}>
+            Business name
+          </label>
+          <input
+            id="businessName"
+            type="text"
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
+            required
+            autoComplete="organization"
+            placeholder="Acme Inc."
+            minLength={2}
+            maxLength={255}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
           <label htmlFor="email" className={labelClass}>
-            Email address
+            Work email
           </label>
           <input
             id="email"
@@ -117,7 +142,7 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="new-password"
-              placeholder="Create a strong password"
+              placeholder="At least 12 characters"
               className={`${inputClass} pr-11`}
             />
             <button

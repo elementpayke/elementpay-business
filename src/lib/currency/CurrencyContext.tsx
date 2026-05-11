@@ -1,14 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  startTransition,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import type { CurrencyRateSnapshot, SupportedCurrency } from "@/lib/currency/config";
+import { createContext, useContext, useEffect, useState } from "react";
+import type { SupportedCurrency } from "@/lib/currency/config";
 
 type CurrencyContextValue = {
   selectedCurrency: SupportedCurrency;
@@ -27,7 +20,6 @@ type CurrencyContextValue = {
 
 const STORAGE_KEY = "elementpay-display-currency";
 const DEFAULT_RATE = 129;
-const FALLBACK_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null);
 
@@ -51,84 +43,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     return stored === "USD" || stored === "KES" ? stored : "USD";
   });
-  const [snapshot, setSnapshot] = useState<CurrencyRateSnapshot | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, selectedCurrency);
   }, [selectedCurrency]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRates() {
-      try {
-        setIsRefreshing(true);
-        const response = await fetch("/api/currency", { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`Currency request failed (${response.status})`);
-        }
-
-        const nextSnapshot = (await response.json()) as CurrencyRateSnapshot;
-        if (cancelled) return;
-
-        startTransition(() => {
-          setSnapshot(nextSnapshot);
-        });
-      } catch (error) {
-        if (!cancelled) {
-          console.warn("[currency] failed to refresh rates", error);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsRefreshing(false);
-        }
-      }
-    }
-
-    loadRates();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    const refreshIntervalMs = snapshot?.refreshIntervalMs ?? FALLBACK_REFRESH_INTERVAL_MS;
-    intervalRef.current = setInterval(() => {
-      void (async () => {
-        try {
-          setIsRefreshing(true);
-          const response = await fetch("/api/currency", { cache: "no-store" });
-          if (!response.ok) {
-            throw new Error(`Currency request failed (${response.status})`);
-          }
-
-          const nextSnapshot = (await response.json()) as CurrencyRateSnapshot;
-          startTransition(() => {
-            setSnapshot(nextSnapshot);
-          });
-        } catch (error) {
-          console.warn("[currency] failed to refresh rates", error);
-        } finally {
-          setIsRefreshing(false);
-        }
-      })();
-    }, refreshIntervalMs);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [snapshot?.refreshIntervalMs]);
-
-  const usdKesRate = snapshot?.quotes.KES ?? DEFAULT_RATE;
+  const usdKesRate = DEFAULT_RATE;
 
   function setSelectedCurrency(currency: SupportedCurrency) {
     setSelectedCurrencyState(currency);
@@ -148,8 +68,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         selectedCurrency,
         setSelectedCurrency,
         usdKesRate,
-        lastUpdated: snapshot?.fetchedAt ?? null,
-        isRefreshing,
+        lastUpdated: null,
+        isRefreshing: false,
         convertFromUsd,
         formatMoneyFromUsd,
         formatMoney: (amount, currency = selectedCurrency, options) =>
