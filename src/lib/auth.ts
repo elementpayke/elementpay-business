@@ -1,3 +1,5 @@
+import { authedFetch } from "@/lib/authedFetch";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 export interface BusinessSignupSchema {
@@ -25,7 +27,8 @@ export interface SignupBusinessResult {
   verification_required: boolean;
 }
 
-// Derived from JWT claims since the new backend has no /auth/me yet.
+// Derived from JWT claims for synchronous reads; the canonical session
+// payload comes from GET /api/auth/me (see MeResponse below).
 export interface UserResponse {
   id: number;
   email: string;
@@ -33,18 +36,45 @@ export interface UserResponse {
   role?: string;
 }
 
+// ---- /api/auth/me payload ---------------------------------------------
+
+export interface MeUser {
+  id: number;
+  email: string;
+  email_verified: boolean;
+  kyc_verified: boolean;
+}
+
+export interface MeBusiness {
+  id: number;
+  name: string;
+  legal_name?: string | null;
+  country?: string | null;
+  status: string;
+  kyb_verified: boolean;
+  registration_number?: string | null;
+}
+
+// kyb_summary mirrors GET /api/businesses/{id}/kyb. The backend may return
+// an empty object when no profile exists yet, so every field is optional.
+export interface MeKybSummary {
+  kyb_status?: string;
+  hosted_url?: string | null;
+  updated_at?: string | null;
+  [key: string]: unknown;
+}
+
+export interface MeResponse {
+  user: MeUser;
+  business: MeBusiness | null;
+  role: string | null;
+  kyb_summary: MeKybSummary | null;
+}
+
 interface ApiResponse<T> {
   status: "success" | "error";
   message: string;
   data?: T | null;
-}
-
-function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
 }
 
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -163,9 +193,8 @@ export async function changePassword(
   current_password: string,
   new_password: string,
 ): Promise<{ ok: boolean }> {
-  const res = await fetch(`${API_BASE}/api/auth/password/update`, {
+  const res = await authedFetch(`${API_BASE}/api/auth/password/update`, {
     method: "POST",
-    headers: getAuthHeaders(),
     body: JSON.stringify({ current_password, new_password }),
   });
   return handleResponse<{ ok: boolean }>(res);
@@ -187,6 +216,11 @@ export async function resendVerification(email: string): Promise<{ ok: boolean }
     body: JSON.stringify({ email }),
   });
   return handleResponse<{ ok: boolean }>(res);
+}
+
+export async function getMe(): Promise<MeResponse> {
+  const res = await authedFetch(`${API_BASE}/api/auth/me`, { method: "GET" });
+  return handleResponse<MeResponse>(res);
 }
 
 export async function refreshToken(): Promise<Token> {

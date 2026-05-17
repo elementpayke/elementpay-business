@@ -4,9 +4,20 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, CheckCircle2, Loader2, MailWarning } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import { resendVerification } from "@/lib/auth";
 import SocialAuthButtons from "@/components/auth/SocialAuthButtons";
+
+function isUnverifiedEmailError(message: string) {
+  const msg = message.toLowerCase();
+  return (
+    msg.includes("not verified") ||
+    msg.includes("verify your email") ||
+    msg.includes("account is inactive") ||
+    msg.includes("inactive")
+  );
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -16,21 +27,44 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const [loading, setLoading] = useState(false);
   const justVerified = params.get("verified") === "true";
+  const nextParam = params.get("next");
+  const nextPath = nextParam && nextParam.startsWith("/") ? nextParam : "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setUnverifiedEmail(null);
     setLoading(true);
 
     try {
       await login({ email, password });
-      router.push("/dashboard");
+      router.push(nextPath);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
+      const message = err instanceof Error ? err.message : "Login failed. Please try again.";
+      if (isUnverifiedEmailError(message)) {
+        setUnverifiedEmail(email);
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!unverifiedEmail) return;
+    setResending(true);
+    try {
+      await resendVerification(unverifiedEmail);
+    } catch {
+      // non-blocking — the user can still resend from the verify-email page
+    } finally {
+      setResending(false);
+      router.push(`/auth/verify-email?email=${encodeURIComponent(unverifiedEmail)}`);
     }
   };
 
@@ -63,6 +97,34 @@ function LoginForm() {
         >
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           Email verified. Sign in to continue.
+        </motion.div>
+      )}
+
+      {unverifiedEmail && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 flex items-center gap-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-200 text-xs px-3 py-2 rounded-lg"
+        >
+          <MailWarning className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1 leading-tight">
+            Account inactive. Verify <span className="font-medium">{unverifiedEmail}</span> to continue.
+          </span>
+          <button
+            type="button"
+            onClick={handleVerifyEmail}
+            disabled={resending}
+            className="inline-flex items-center gap-1 rounded-md bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white font-semibold text-xs px-2.5 py-1 transition-colors shrink-0"
+          >
+            {resending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <>
+                Verify
+                <ArrowRight className="h-3 w-3" />
+              </>
+            )}
+          </button>
         </motion.div>
       )}
 

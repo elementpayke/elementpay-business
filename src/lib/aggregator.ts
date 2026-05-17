@@ -1,12 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+import { authedFetch } from "@/lib/authedFetch";
 
-function authHeaders(): HeadersInit {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 async function parseJson<T>(res: Response): Promise<T> {
   const isJson = res.headers.get("content-type")?.includes("application/json");
@@ -74,9 +68,8 @@ export async function fetchOrderQuote(params: {
   orderType?: 0 | 1;
   currency?: string;
 }): Promise<OrderQuoteResponse> {
-  const res = await fetch(`${API_BASE}/quote/order`, {
+  const res = await authedFetch(`${API_BASE}/quote/order`, {
     method: "POST",
-    headers: authHeaders(),
     body: JSON.stringify({
       amount_fiat: params.amountFiat,
       token: params.tokenAddress,
@@ -109,9 +102,8 @@ export async function createOnRampOrder(params: {
   };
   if (params.reason) payload.reason = params.reason;
 
-  const res = await fetch(`${API_BASE}/orders/create`, {
+  const res = await authedFetch(`${API_BASE}/orders/create`, {
     method: "POST",
-    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
   return parseJson<CreateOrderResponse>(res);
@@ -135,9 +127,8 @@ export async function createPaybillOrder(params: {
     },
   };
 
-  const res = await fetch(`${API_BASE}/orders/create`, {
+  const res = await authedFetch(`${API_BASE}/orders/create`, {
     method: "POST",
-    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
   return parseJson<CreateOrderResponse>(res);
@@ -174,9 +165,8 @@ export async function createBankTransferOrder(params: {
     },
   };
 
-  const res = await fetch(`${API_BASE}/orders/create`, {
+  const res = await authedFetch(`${API_BASE}/orders/create`, {
     method: "POST",
-    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
   return parseJson<CreateOrderResponse>(res);

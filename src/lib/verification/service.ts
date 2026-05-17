@@ -1,3 +1,4 @@
+import { authedFetch } from "@/lib/authedFetch";
 import { mockVerificationDashboardData } from "@/lib/verification/mockData";
 import type {
   StartVerificationResponse,
@@ -19,14 +20,6 @@ class VerificationApiError extends Error {
     this.name = "VerificationApiError";
     this.status = status;
   }
-}
-
-function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -204,12 +197,8 @@ export async function getVerificationDashboardData(): Promise<VerificationDashbo
 
   try {
     const [statusResponse, limitsResponse] = await Promise.all([
-      fetch(`${API_BASE}/verification/status`, {
-        headers: getAuthHeaders(),
-      }),
-      fetch(`${API_BASE}/verification/limits`, {
-        headers: getAuthHeaders(),
-      }),
+      authedFetch(`${API_BASE}/verification/status`),
+      authedFetch(`${API_BASE}/verification/limits`),
     ]);
 
     const [statusPayload, limitsPayload] = await Promise.all([
@@ -263,9 +252,8 @@ export async function startVerificationTier(
   }
 
   try {
-    const response = await fetch(`${API_BASE}/verification/tier/${tierId}/start`, {
+    const response = await authedFetch(`${API_BASE}/verification/tier/${tierId}/start`, {
       method: "POST",
-      headers: getAuthHeaders(),
     });
 
     await parseJson<unknown>(response);

@@ -7,10 +7,10 @@ import { COUNTRIES, type Country } from "@/lib/countries";
 import {
   emptyBusinessDetails,
   emptyStakeholder,
+  type AssociateRelationshipType,
   type BusinessDetails,
+  type BusinessType,
   type DateOfBirth,
-  type NoahEntityType,
-  type NoahRelationshipType,
   type Stakeholder,
 } from "@/lib/onboarding/types";
 
@@ -19,8 +19,8 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ] as const;
 
-const ENTITY_TYPE_OPTIONS: { value: NoahEntityType; label: string }[] = [
-  { value: "LimitedLiabilityCompany", label: "Limited Liability Company (LLC)" },
+const ENTITY_TYPE_OPTIONS: { value: BusinessType; label: string }[] = [
+  { value: "LimitedLiabilityCompany", label: "Limited Company" },
   { value: "PublicCompany", label: "Public Company" },
   { value: "SoleProprietorship", label: "Sole Proprietorship" },
   { value: "Partnership", label: "Partnership" },
@@ -32,11 +32,10 @@ const ENTITY_TYPE_OPTIONS: { value: NoahEntityType; label: string }[] = [
   { value: "PublicAgency", label: "Public Agency" },
 ];
 
-const RELATIONSHIP_OPTIONS: { value: NoahRelationshipType; label: string }[] = [
-  { value: "UBO", label: "UBO" },
+const RELATIONSHIP_OPTIONS: { value: AssociateRelationshipType; label: string }[] = [
   { value: "Representative", label: "Representative" },
   { value: "Director", label: "Director" },
-  { value: "Signatory", label: "Signatory" },
+  { value: "Shareholder", label: "Shareholder" },
 ];
 
 const inputClass =
@@ -196,7 +195,7 @@ export default function BusinessDetailsStep({
     }));
   };
 
-  const toggleRelationship = (id: string, type: NoahRelationshipType) => {
+  const toggleRelationship = (id: string, type: AssociateRelationshipType) => {
     setData((prev) => ({
       ...prev,
       stakeholders: prev.stakeholders.map((s) => {
@@ -328,7 +327,7 @@ export default function BusinessDetailsStep({
               <NativeSelect
                 id="entityType"
                 value={data.entityType}
-                onChange={(v) => update("entityType", v as NoahEntityType)}
+                onChange={(v) => update("entityType", v as BusinessType)}
                 ariaLabel="Entity type"
               >
                 <option value="">Select</option>

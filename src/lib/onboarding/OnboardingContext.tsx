@@ -4,16 +4,25 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { useAuth } from "@/lib/AuthContext";
+import { getKybSummary, kybSummaryHasProfile } from "@/lib/kyb";
+import {
+  mergeOnboardingState,
+  profileToBasicInfo,
+  profileToBusinessDetails,
+} from "@/lib/onboarding/kybPrefill";
 import {
   EMPTY_ONBOARDING_STATE,
   isBasicInfoComplete,
   isBusinessDetailsComplete,
   isTier1Complete,
+  normalizeBusinessType,
   type BasicInfoProfile,
   type BusinessDetails,
   type OnboardingState,
@@ -45,9 +54,25 @@ function readState(key: string | null): OnboardingState {
     const raw = window.localStorage.getItem(key);
     if (!raw) return EMPTY_ONBOARDING_STATE;
     const parsed = JSON.parse(raw) as Partial<OnboardingState>;
+    // Older drafts stored the dial code (e.g. "+254") in profile.countryCode,
+    // but the contract is ISO-2. Drop bad values so the form re-defaults.
+    const profile = parsed.profile
+      ? {
+          ...parsed.profile,
+          countryCode: parsed.profile.countryCode?.startsWith("+")
+            ? ""
+            : parsed.profile.countryCode ?? "",
+        }
+      : null;
+    const business = parsed.business
+      ? {
+          ...parsed.business,
+          entityType: normalizeBusinessType(parsed.business.entityType ?? ""),
+        }
+      : null;
     return {
-      profile: parsed.profile ?? null,
-      business: parsed.business ?? null,
+      profile,
+      business,
     };
   } catch {
     return EMPTY_ONBOARDING_STATE;
@@ -66,18 +91,72 @@ function writeState(key: string | null, state: OnboardingState) {
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const key = storageKey(user?.id);
+  const businessId = user?.business_id ?? null;
 
   // We derive state during render when the identity key changes, rather than
   // syncing via useEffect. This avoids the lint rule against set-state-in-effect
   // and keeps hydration simple.
   const [trackedKey, setTrackedKey] = useState<string | null | undefined>(undefined);
   const [state, setState] = useState<OnboardingState>(EMPTY_ONBOARDING_STATE);
-  const ready = !authLoading && trackedKey === key;
+  const [prefillBusinessId, setPrefillBusinessId] = useState<number | null>(null);
+  const [prefillDone, setPrefillDone] = useState(false);
+  const prefillInFlight = useRef(false);
+
+  const localReady = !authLoading && trackedKey === key;
+  // We only need to wait on the server fetch when a business_id is present.
+  // If the user has no business yet, prefill is a no-op.
+  const ready =
+    localReady && (businessId === null || prefillBusinessId === businessId);
 
   if (!authLoading && trackedKey !== key) {
     setTrackedKey(key);
     setState(readState(key));
+    // Identity changed (or first hydration) — invalidate any prior prefill so
+    // the effect below re-fetches for the new business.
+    setPrefillDone(false);
+    setPrefillBusinessId(null);
   }
+
+  // Fetch existing KYB profile from the server and merge it into the local
+  // draft so a failed submission doesn't lose user-entered data. Runs once
+  // per business_id; falls back silently if the GET fails.
+  useEffect(() => {
+    if (!localReady) return;
+    if (businessId === null) return;
+    if (prefillBusinessId === businessId) return;
+    if (prefillInFlight.current) return;
+
+    prefillInFlight.current = true;
+    void (async () => {
+      try {
+        const summary = await getKybSummary(businessId);
+        if (kybSummaryHasProfile(summary) && summary.profile) {
+          const serverState: OnboardingState = {
+            profile: profileToBasicInfo(summary.profile),
+            business: profileToBusinessDetails(summary.profile),
+          };
+          setState((prev) => {
+            const merged = mergeOnboardingState(serverState, prev);
+            writeState(key, merged);
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn(
+          "[onboarding] KYB prefill failed, using local draft:",
+          err instanceof Error ? err.message : err,
+        );
+      } finally {
+        prefillInFlight.current = false;
+        setPrefillBusinessId(businessId);
+        setPrefillDone(true);
+      }
+    })();
+  }, [localReady, businessId, prefillBusinessId, key]);
+
+  // prefillDone is referenced indirectly by `ready` via prefillBusinessId;
+  // keep the value in scope for future use without an unused-var warning.
+  void prefillDone;
 
   const saveProfile = useCallback(
     (profile: BasicInfoProfile) => {

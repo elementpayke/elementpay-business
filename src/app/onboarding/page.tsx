@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import BasicInfoStep from "@/components/onboarding/BasicInfoStep";
 import BusinessDetailsStep from "@/components/onboarding/BusinessDetailsStep";
 import OnboardingStepper, {
@@ -10,7 +11,7 @@ import OnboardingStepper, {
 } from "@/components/onboarding/OnboardingStepper";
 import { useAuth } from "@/lib/AuthContext";
 import { useOnboarding } from "@/lib/onboarding/OnboardingContext";
-import { submitNoahPrefill } from "@/lib/onboarding/noahService";
+import { submitKybAndInitiate } from "@/lib/onboarding/kybSubmit";
 import type { BasicInfoProfile, BusinessDetails } from "@/lib/onboarding/types";
 
 function initialStep(hasProfile: boolean): OnboardingStep {
@@ -19,11 +20,46 @@ function initialStep(hasProfile: boolean): OnboardingStep {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { state, hasBusinessDetails, saveProfile, saveBusiness } = useOnboarding();
-  const [step, setStep] = useState<OnboardingStep>(
-    initialStep(Boolean(state.profile)),
-  );
+  const { user, authenticated, loading: authLoading, kybVerified } = useAuth();
+  const { ready, state, hasBusinessDetails, saveProfile, saveBusiness } =
+    useOnboarding();
+  // Defer step initialization until prefill completes so the initial step
+  // reflects server-derived state, not just an empty draft.
+  const [step, setStep] = useState<OnboardingStep | null>(null);
+  if (ready && step === null) {
+    setStep(initialStep(Boolean(state.profile)));
+  }
+
+  useEffect(() => {
+    if (authLoading) return;
+    console.log("[guard:onboarding]", {
+      authenticated,
+      authLoading,
+      kybVerified,
+    });
+    if (!authenticated) {
+      router.replace("/auth/login");
+      return;
+    }
+    if (kybVerified === true) {
+      console.warn("[guard:onboarding] redirecting → /dashboard");
+      router.replace("/dashboard");
+    }
+  }, [authLoading, authenticated, kybVerified, router]);
+
+  if (
+    authLoading ||
+    !authenticated ||
+    kybVerified === true ||
+    !ready ||
+    step === null
+  ) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
+      </div>
+    );
+  }
 
   const handleBasicInfoSubmit = async (profile: BasicInfoProfile) => {
     saveProfile(profile);
@@ -34,14 +70,21 @@ export default function OnboardingPage() {
     if (!user?.id) {
       throw new Error("You must be signed in to submit business details.");
     }
+    if (!user.business_id) {
+      throw new Error("No business is associated with this account.");
+    }
     // Surfaces upstream errors to the form via thrown Error.
-    const result = await submitNoahPrefill(business, user.id);
+    const result = await submitKybAndInitiate(
+      user.business_id,
+      business,
+      state.profile,
+      user.email,
+    );
     saveBusiness(business);
     if (result.hostedUrl) {
       window.location.href = result.hostedUrl;
       return;
     }
-    // Backend reports onboarding is already complete (no HostedURL needed).
     router.replace("/dashboard");
   };
 

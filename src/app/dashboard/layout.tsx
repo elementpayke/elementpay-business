@@ -12,9 +12,35 @@ import { devLog } from "@/lib/devlog";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { loading, authenticated } = useAuth();
-  const { ready: onboardingReady, hasBasicInfo } = useOnboarding();
+  const { loading, authenticated, kybVerified, kybSummary } = useAuth();
+  const {
+    ready: onboardingReady,
+    hasBasicInfo,
+    tier1Complete,
+  } = useOnboarding();
   const lastAuthRef = useRef<boolean | null>(null);
+
+  // A user who has already submitted KYB (status: submitted/approved) has
+  // nothing more to do in the onboarding form. Bouncing them back would
+  // re-trigger /kyb/initiate and loop. /me doesn't always populate kyb_status,
+  // so we also treat "Tier-1 form complete" as proof the user has submitted —
+  // otherwise dashboard and onboarding contradict each other (one says
+  // "redirect to form", the other says "form is done, go back") and we loop.
+  const kybStatus = typeof kybSummary?.kyb_status === "string"
+    ? kybSummary.kyb_status.toLowerCase()
+    : null;
+  const kybStatusSubmitted =
+    kybStatus !== null && kybStatus !== "pending" && kybStatus !== "";
+  const kybSubmitted = kybStatusSubmitted || (onboardingReady && tier1Complete);
+
+  // KYB is the source of truth for onboarding gating. Local Tier-1 draft
+  // (hasBasicInfo) is only consulted when we don't have a server answer yet
+  // (kybVerified === null), so signed-in users with verified KYB on a fresh
+  // device aren't bounced back through onboarding.
+  const needsOnboarding =
+    !kybSubmitted &&
+    (kybVerified === false ||
+      (kybVerified === null && onboardingReady && !hasBasicInfo));
 
   useEffect(() => {
     if (loading) return;
@@ -25,17 +51,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     lastAuthRef.current = authenticated;
 
+    console.log("[guard:dashboard]", {
+      authenticated,
+      loading,
+      kybVerified,
+      kybStatus,
+      kybStatusSubmitted,
+      tier1Complete,
+      kybSubmitted,
+      onboardingReady,
+      hasBasicInfo,
+      needsOnboarding,
+    });
+
     if (!authenticated) {
       router.replace("/auth/login");
       return;
     }
-    if (onboardingReady && !hasBasicInfo) {
+    if (needsOnboarding) {
+      console.warn("[guard:dashboard] redirecting → /onboarding");
       router.replace("/onboarding");
     }
-  }, [authenticated, loading, onboardingReady, hasBasicInfo, router]);
+  }, [
+    authenticated,
+    loading,
+    needsOnboarding,
+    router,
+    kybVerified,
+    kybStatus,
+    kybStatusSubmitted,
+    tier1Complete,
+    kybSubmitted,
+    onboardingReady,
+    hasBasicInfo,
+  ]);
 
-  const gated =
-    loading || !authenticated || !onboardingReady || !hasBasicInfo;
+  const gated = loading || !authenticated || needsOnboarding;
 
   if (gated) {
     return (

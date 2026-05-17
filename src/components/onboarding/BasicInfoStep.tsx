@@ -63,6 +63,13 @@ function findByCode(code: string): Country | null {
   return COUNTRIES.find((c) => c.code === code) ?? null;
 }
 
+// Re-hydrate the saved value. New drafts use ISO-2 (e.g. "KE"); older
+// drafts saved before this fix used the dial code (e.g. "+254").
+function findCountryByStoredCode(value: string): Country | null {
+  if (!value) return null;
+  return value.startsWith("+") ? findByDial(value) : findByCode(value);
+}
+
 // Kenya is our primary customer base — used as the default for nationality and
 // dial-code when the user has not previously made a choice.
 const DEFAULT_COUNTRY = findByCode("KE");
@@ -74,7 +81,7 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
     initial?.country ? findCountry(initial.country) : DEFAULT_COUNTRY,
   );
   const [dialCountry, setDialCountry] = useState<Country | null>(
-    initial?.countryCode ? findByDial(initial.countryCode) : DEFAULT_COUNTRY,
+    initial?.countryCode ? findCountryByStoredCode(initial.countryCode) : DEFAULT_COUNTRY,
   );
   const [phoneNumber, setPhoneNumber] = useState(initial?.phoneNumber ?? "");
   const [dobDay, setDobDay] = useState(initial?.dateOfBirth.day ?? "");
@@ -120,7 +127,7 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       country: country.name,
-      countryCode: dialCountry.dialCode,
+      countryCode: dialCountry.code,
       phoneNumber: normalizedPhone,
       dateOfBirth: { day: dobDay, month: dobMonth, year: dobYear },
     };

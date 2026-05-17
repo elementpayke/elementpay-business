@@ -24,9 +24,22 @@ function VerifyEmailForm() {
   }, []);
 
   const handleChange = (idx: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
+    if (!/^[A-Za-z0-9]*$/.test(value)) return;
+
+    if (value.length > 1) {
+      const chars = value.toUpperCase().slice(0, 6 - idx).split("");
+      const next = [...code];
+      chars.forEach((ch, i) => {
+        next[idx + i] = ch;
+      });
+      setCode(next);
+      const focusIdx = Math.min(idx + chars.length, 5);
+      inputRefs.current[focusIdx]?.focus();
+      return;
+    }
+
     const next = [...code];
-    next[idx] = value.slice(-1);
+    next[idx] = value.toUpperCase();
     setCode(next);
     if (value && idx < 5) {
       inputRefs.current[idx + 1]?.focus();
@@ -41,10 +54,15 @@ function VerifyEmailForm() {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    const next = [...code];
-    for (let i = 0; i < 6; i++) {
-      next[i] = pasted[i] || "";
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/[^A-Za-z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 6);
+    if (!pasted) return;
+    const next = ["", "", "", "", "", ""];
+    for (let i = 0; i < pasted.length; i++) {
+      next[i] = pasted[i];
     }
     setCode(next);
     const focusIdx = Math.min(pasted.length, 5);
@@ -118,7 +136,7 @@ function VerifyEmailForm() {
         Check your email
       </h1>
       <p className="mt-2 text-gray-500 dark:text-gray-400 text-sm text-center">
-        We sent a 6-digit code to{" "}
+        We sent a 6-character code to{" "}
         <span className="font-medium text-gray-700 dark:text-gray-200">{email}</span>
       </p>
 
@@ -150,12 +168,14 @@ function VerifyEmailForm() {
               key={idx}
               ref={(el) => { inputRefs.current[idx] = el; }}
               type="text"
-              inputMode="numeric"
-              maxLength={1}
+              inputMode="text"
+              autoCapitalize="characters"
+              autoComplete={idx === 0 ? "one-time-code" : "off"}
+              maxLength={idx === 0 ? 6 : 1}
               value={digit}
               onChange={(e) => handleChange(idx, e.target.value)}
               onKeyDown={(e) => handleKeyDown(idx, e)}
-              className="w-12 h-14 text-center text-lg font-bold text-gray-900 dark:text-white bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+              className="w-12 h-14 text-center text-lg font-bold uppercase text-gray-900 dark:text-white bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
             />
           ))}
         </div>

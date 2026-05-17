@@ -12,9 +12,9 @@ export interface BasicInfoProfile {
   phoneNumber: string;
   dateOfBirth: DateOfBirth;
 }
-
-// NOAH EntityType values, sent verbatim.
-export type NoahEntityType =
+// KYB profile business_type enum.
+export type BusinessType =
+  | ""
   | "LimitedLiabilityCompany"
   | "PublicCompany"
   | "SoleProprietorship"
@@ -26,12 +26,48 @@ export type NoahEntityType =
   | "NonProfitOrganization"
   | "PublicAgency";
 
-// NOAH Associate.RelationshipTypes values.
-export type NoahRelationshipType =
+// Associate.relationship_types values accepted by the KYB profile endpoint.
+export type AssociateRelationshipType =
   | "UBO"
   | "Representative"
   | "Director"
-  | "Signatory";
+  | "Shareholder";
+
+// Map legacy Noah EntityType values (still in localStorage from prior sessions)
+// onto the new business_type enum so saved drafts keep working.
+const LEGACY_ENTITY_TO_BUSINESS_TYPE: Record<string, BusinessType> = {
+  LimitedLiabilityCompany: "LimitedLiabilityCompany",
+  PublicCompany: "PublicCompany",
+  Corporation: "Corporation",
+  SoleProprietorship: "SoleProprietorship",
+  Partnership: "Partnership",
+  Trust: "Trust",
+  PrivateFoundation: "PrivateFoundation",
+  Charity: "Charity",
+  NonProfitOrganization: "NonProfitOrganization",
+  PublicAgency: "PublicAgency",
+};
+
+export function normalizeBusinessType(value: string): BusinessType | "" {
+  if (!value) return "";
+  if (value in LEGACY_ENTITY_TO_BUSINESS_TYPE) {
+    return LEGACY_ENTITY_TO_BUSINESS_TYPE[value];
+  }
+  const allowed: BusinessType[] = [
+    "",
+    "LimitedLiabilityCompany",
+    "PublicCompany",
+    "SoleProprietorship",
+    "Partnership",
+    "Corporation",
+    "Trust",
+    "PrivateFoundation",
+    "Charity",
+    "NonProfitOrganization",
+    "PublicAgency",
+  ];
+  return (allowed as string[]).includes(value) ? (value as BusinessType) : "";
+}
 
 export interface BusinessAddress {
   line1: string;
@@ -45,7 +81,7 @@ export interface Stakeholder {
   id: string; // UUID, sent as Associate.ID
   firstName: string;
   lastName: string;
-  relationshipTypes: NoahRelationshipType[];
+  relationshipTypes: AssociateRelationshipType[];
   dateOfBirth: DateOfBirth;
 }
 
@@ -53,7 +89,7 @@ export interface BusinessDetails {
   legalName: string;
   registrationNumber: string;
   taxId: string;
-  entityType: NoahEntityType | "";
+  entityType: BusinessType | "";
   registrationCountryCode: string; // ISO-2
   incorporationDate: DateOfBirth;
   websiteUrl: string;
@@ -87,7 +123,7 @@ export function emptyStakeholder(): Stakeholder {
     id: generateId(),
     firstName: "",
     lastName: "",
-    relationshipTypes: ["UBO"],
+    relationshipTypes: ["Director"],
     dateOfBirth: { day: "", month: "", year: "" },
   };
 }
