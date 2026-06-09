@@ -5,17 +5,20 @@ import { notFound, useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  CalendarClock,
   ChevronLeft,
   ChevronRight,
   Copy,
-  Flag as FlagIcon,
-  RotateCcw,
+  Loader2,
 } from "lucide-react";
-import Flag from "@/components/dashboard/Flag";
-import { StatusBadge, mergeClasses } from "@/components/dashboard/DashboardPrimitives";
-import { recentTransactions } from "@/components/dashboard/dashboardData";
+import {
+  StatusBadge,
+  mergeClasses,
+} from "@/components/dashboard/DashboardPrimitives";
+import EmptyState from "@/components/dashboard/EmptyState";
 import ShareReceiptDropdown from "@/components/transactions/ShareReceiptDropdown";
+import { useTransaction } from "@/lib/dashboard/hooks";
+import { TransactionNotFoundError } from "@/lib/dashboard/api";
+import { toTransactionRow } from "@/lib/dashboard/transactionView";
 
 function HistoryButton({
   disabled = false,
@@ -58,22 +61,28 @@ function KVRow({
       )}
     >
       <span className="text-sm text-[#8D92A6]">{label}</span>
-      <span className="text-right text-sm font-medium text-[#1F2640]">{children}</span>
+      <span className="text-right text-sm font-medium text-[#1F2640]">
+        {children}
+      </span>
     </div>
   );
 }
 
-function CurrencyPairIcon({ from, to }: { from: "US"; to: "KE" | "NG" | "GH" }) {
-  return (
-    <span className="relative inline-flex h-5 w-8 items-center">
-      <span className="absolute left-0 z-10">
-        <Flag code={from} size={18} />
-      </span>
-      <span className="absolute left-3">
-        <Flag code={to} size={18} />
-      </span>
-    </span>
-  );
+function formatTimestamp(iso: string | null): { date: string; time: string } {
+  if (!iso) return { date: "—", time: "" };
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { date: iso, time: "" };
+  return {
+    date: d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    }),
+    time: d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
 }
 
 export default function TransactionDetailsPage({
@@ -83,25 +92,49 @@ export default function TransactionDetailsPage({
 }) {
   const router = useRouter();
   const { id } = use(params);
-  const txn = recentTransactions.find((t) => t.id === id);
+  const { data: txn, isLoading, isError, error } = useTransaction(id);
   const [idCopied, setIdCopied] = useState(false);
-
-  if (!txn) return notFound();
-
-  const isIn = txn.direction === "in";
-  const unsignedAmount = txn.amount.replace(/^[-+]/, "");
-  const category = isIn ? "Pay-in" : "Pay-out";
 
   async function copyId() {
     if (!txn) return;
     try {
-      await navigator.clipboard.writeText(txn.id);
+      await navigator.clipboard.writeText(String(txn.id));
       setIdCopied(true);
       setTimeout(() => setIdCopied(false), 1500);
     } catch {
       /* no-op */
     }
   }
+
+  if (isLoading) {
+    return (
+      <section className="flex items-center justify-center py-20 text-sm text-[#8D92A6]">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Loading transaction…
+      </section>
+    );
+  }
+
+  if (error instanceof TransactionNotFoundError) {
+    return notFound();
+  }
+
+  if (isError || !txn) {
+    return (
+      <section className="space-y-6">
+        <EmptyState
+          title="Transaction unavailable"
+          description="We couldn't load this transaction. Please try again."
+        />
+      </section>
+    );
+  }
+
+  const row = toTransactionRow(txn);
+  const isIn = row.direction === "in";
+  const { date, time } = formatTimestamp(txn.created_at);
+  const category = isIn ? "Pay-in" : row.direction === "out" ? "Pay-out" : "Order";
+  const unsignedAmount = row.amount.replace(/^[-+]/, "");
 
   return (
     <section className="space-y-6">
@@ -116,10 +149,10 @@ export default function TransactionDetailsPage({
             </HistoryButton>
           </div>
           <h1 className="text-[24px] font-semibold tracking-[-0.02em] text-[#171D32]">
-            Transactions Details
+            Transaction Details
           </h1>
         </div>
-        <ShareReceiptDropdown txn={txn} />
+        <ShareReceiptDropdown txn={row} />
       </header>
 
       <div className="mx-auto w-full max-w-[760px]">
@@ -129,7 +162,9 @@ export default function TransactionDetailsPage({
               <span
                 className={mergeClasses(
                   "flex h-7 w-7 items-center justify-center rounded-full",
-                  isIn ? "bg-[#E8F8EF] text-[#1E9F72]" : "bg-[#E8F8EF] text-[#1E9F72]",
+                  isIn
+                    ? "bg-[#E8F8EF] text-[#1E9F72]"
+                    : "bg-[#FFEFEF] text-[#D95252]",
                 )}
                 aria-hidden
               >
@@ -140,58 +175,48 @@ export default function TransactionDetailsPage({
                 )}
               </span>
               <span className="text-sm text-[#7E8498]">
-                {isIn ? "You received" : "You sent"}
+                {isIn
+                  ? "You received"
+                  : row.direction === "out"
+                    ? "You sent"
+                    : "Order"}
               </span>
             </div>
 
             <p className="mt-3 text-[36px] font-semibold tracking-[-0.02em] text-[#1A2138]">
               {unsignedAmount}
             </p>
-
-            <p className="mt-2 text-sm">
-              <span className="text-[#8D92A6]">+Fees:</span>{" "}
-              <span className="font-medium text-tertiary-600">{txn.fees}</span>
-            </p>
-
-            <p className="mt-1 text-sm text-[#9CA3B6]">~ {txn.usdEquivalent}</p>
           </div>
 
           <div className="mt-10 divide-y divide-[#F0F2F7]">
-            <KVRow label="Recipient's name">{txn.accountName}</KVRow>
-            <KVRow label="Recipient's email address">{txn.recipientEmail}</KVRow>
-            <KVRow label="Payment method">{txn.paymentMethod}</KVRow>
-            <KVRow label="Bank name">{txn.bankName}</KVRow>
-            <KVRow label="Account number">{txn.accountNumber}</KVRow>
+            <KVRow label="Payment method">{row.paymentMethod}</KVRow>
+            {txn.wallet_address ? (
+              <KVRow label="Wallet address">
+                <span className="break-all font-mono text-xs">
+                  {txn.wallet_address}
+                </span>
+              </KVRow>
+            ) : null}
             <KVRow label="Date & Time">
               <span className="inline-flex items-center gap-2">
-                <span>{txn.date.split(" • ")[0] ?? txn.date}</span>
-                <span className="text-[#CDD2E0]">|</span>
-                <span>{txn.date.split(" • ")[1] ?? ""}</span>
-              </span>
-            </KVRow>
-            <KVRow label="Exchange rate">
-              <span className="inline-flex items-center gap-2">
-                <CurrencyPairIcon from="US" to={txn.country} />
-                <span>{txn.fxRate}</span>
+                <span>{date}</span>
+                {time ? (
+                  <>
+                    <span className="text-[#CDD2E0]">|</span>
+                    <span>{time}</span>
+                  </>
+                ) : null}
               </span>
             </KVRow>
           </div>
 
           <div className="mt-6 divide-y divide-[#F0F2F7] border-t border-[#F0F2F7] pt-2">
-            <KVRow label="Transaction type">{txn.type}</KVRow>
+            <KVRow label="Transaction type">{row.type}</KVRow>
             <KVRow label="Transaction category">{category}</KVRow>
-            <KVRow label="Transacting wallet">
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard/wallets")}
-                className="font-medium text-primary-600 underline-offset-2 transition hover:text-primary-700 hover:underline"
-              >
-                {txn.reference || "Wallet name"}
-              </button>
-            </KVRow>
+            <KVRow label="Currency">{row.currency || "—"}</KVRow>
             <KVRow label="Transaction ID">
               <span className="inline-flex items-center gap-2">
-                {txn.id}
+                {row.id}
                 <button
                   type="button"
                   onClick={copyId}
@@ -201,42 +226,29 @@ export default function TransactionDetailsPage({
                   <Copy className="h-3.5 w-3.5" />
                 </button>
                 {idCopied ? (
-                  <span className="text-[11px] font-medium text-tertiary-600">Copied</span>
+                  <span className="text-[11px] font-medium text-tertiary-600">
+                    Copied
+                  </span>
                 ) : null}
               </span>
             </KVRow>
+            {txn.aggregator_order_id ? (
+              <KVRow label="Aggregator order ID">
+                <span className="font-mono text-xs">
+                  {txn.aggregator_order_id}
+                </span>
+              </KVRow>
+            ) : null}
+            {txn.external_order_id ? (
+              <KVRow label="External reference">
+                <span className="font-mono text-xs">
+                  {txn.external_order_id}
+                </span>
+              </KVRow>
+            ) : null}
             <KVRow label="Transaction status">
-              <StatusBadge status={txn.status} />
+              <StatusBadge status={row.status} />
             </KVRow>
-            <KVRow label="Transaction processing time">{txn.processingTime}</KVRow>
-            {txn.narration ? <KVRow label="Narration">{txn.narration}</KVRow> : null}
-          </div>
-
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[#F0F2F7] pt-6 text-sm font-semibold">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 text-[#E25555] transition hover:text-[#B83F3F]"
-            >
-              <FlagIcon className="h-4 w-4" />
-              Report transaction
-            </button>
-            <div className="flex items-center gap-6">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 text-primary-600 transition hover:text-primary-700"
-              >
-                <CalendarClock className="h-4 w-4" />
-                Schedule transaction
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard/send-payment")}
-                className="inline-flex items-center gap-2 text-primary-600 transition hover:text-primary-700"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Repeat transaction
-              </button>
-            </div>
           </div>
         </div>
       </div>

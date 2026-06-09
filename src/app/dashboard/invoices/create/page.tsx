@@ -10,6 +10,8 @@ import PartyDetailsCard from "@/components/invoices/PartyDetailsCard";
 import PaymentDetailsSection from "@/components/invoices/PaymentDetailsSection";
 import PricingSummary from "@/components/invoices/PricingSummary";
 import { useInvoiceStore } from "@/stores/invoiceStore";
+import { buildInvoicePayload, validateInvoiceDraft } from "@/stores/invoicePayload";
+import { createDraft, updateDraft } from "@/lib/invoices/api";
 
 function HistoryButton({
   disabled = false,
@@ -37,8 +39,13 @@ function HistoryButton({
 
 export default function CreateInvoicePage() {
   const router = useRouter();
+  const draft = useInvoiceStore((s) => s.draft);
+  const draftId = useInvoiceStore((s) => s.draftId);
+  const setDraftId = useInvoiceStore((s) => s.setDraftId);
   const resetDraft = useInvoiceStore((s) => s.resetDraft);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftStatus, setDraftStatus] = useState<string | null>(null);
 
   function handleDiscard() {
     if (confirm("Discard this invoice? All entered details will be cleared.")) {
@@ -47,13 +54,57 @@ export default function CreateInvoicePage() {
     }
   }
 
-  function handleSaveDraft() {
+  async function handleSaveDraft() {
+    setDraftError(null);
+    setDraftStatus(null);
+    const validation = validateInvoiceDraft(draft, "draft");
+    if (validation.length > 0) {
+      setDraftError(validation[0].message);
+      return;
+    }
     setSavingDraft(true);
-    setTimeout(() => setSavingDraft(false), 1000);
+    try {
+      const payload = buildInvoicePayload(draft, "draft");
+      const saved =
+        draftId != null
+          ? await updateDraft(draftId, payload)
+          : await createDraft(payload);
+      setDraftId(saved.id);
+      setDraftStatus("Draft saved");
+    } catch (err) {
+      setDraftError(err instanceof Error ? err.message : "Could not save draft");
+    } finally {
+      setSavingDraft(false);
+    }
   }
 
-  function handleProceed() {
-    router.push("/dashboard/invoices/preview");
+  async function handleProceed() {
+    setDraftError(null);
+    const validation = validateInvoiceDraft(draft, "issued");
+    if (validation.length > 0) {
+      setDraftError(validation[0].message);
+      return;
+    }
+    // Auto-save the latest state to the backend draft before previewing so
+    // the preview page issues against a fresh server-side draft snapshot.
+    setSavingDraft(true);
+    try {
+      const payload = buildInvoicePayload(draft, "draft");
+      const saved =
+        draftId != null
+          ? await updateDraft(draftId, payload)
+          : await createDraft(payload);
+      setDraftId(saved.id);
+      router.push("/dashboard/invoices/preview");
+    } catch (err) {
+      setDraftError(
+        err instanceof Error
+          ? err.message
+          : "Could not save invoice before preview",
+      );
+    } finally {
+      setSavingDraft(false);
+    }
   }
 
   return (
@@ -80,20 +131,28 @@ export default function CreateInvoicePage() {
           >
             Discard invoice
           </button>
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={savingDraft}
-            className="h-10 rounded-lg bg-primary-100/70 px-4 text-sm font-semibold text-primary-700 transition hover:bg-primary-100 disabled:opacity-60"
-          >
-            {savingDraft ? "Saving..." : "Save to draft"}
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              disabled={savingDraft}
+              className="h-10 rounded-lg bg-primary-100/70 px-4 text-sm font-semibold text-primary-700 transition hover:bg-primary-100 disabled:opacity-60"
+            >
+              {savingDraft ? "Saving..." : "Save to draft"}
+            </button>
+            {draftError ? (
+              <span className="text-xs text-[#E35D5B]">{draftError}</span>
+            ) : draftStatus ? (
+              <span className="text-xs text-tertiary-600">{draftStatus}</span>
+            ) : null}
+          </div>
           <button
             type="button"
             onClick={handleProceed}
-            className="h-10 rounded-lg bg-primary-500 px-4 text-sm font-semibold text-white transition hover:brightness-105"
+            disabled={savingDraft}
+            className="h-10 rounded-lg bg-primary-500 px-4 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-60"
           >
-            Proceed to invoice preview
+            {savingDraft ? "Preparing..." : "Proceed to invoice preview"}
           </button>
         </div>
       </header>

@@ -10,7 +10,7 @@ import {
   MessageSquare,
   Share2,
 } from "lucide-react";
-import type { RecentTransactionRow } from "@/components/dashboard/dashboardData";
+import type { TransactionViewRow } from "@/lib/dashboard/transactionView";
 
 type ShareAction = "whatsapp" | "email" | "sms" | "pdf" | "image" | "link";
 
@@ -27,11 +27,15 @@ const SHARE_OPTIONS: Array<{
   { id: "link", label: "Copy link", icon: Link2 },
 ];
 
-function receiptSummary(txn: RecentTransactionRow) {
-  return `Receipt ${txn.id} — ${txn.client} — ${txn.amount} (${txn.status}) on ${txn.date}`;
+function receiptSummary(txn: TransactionViewRow) {
+  return `Receipt ${txn.id} — ${txn.reference} — ${txn.amount} (${txn.status}) on ${txn.date}`;
 }
 
-export default function ShareReceiptDropdown({ txn }: { txn: RecentTransactionRow }) {
+export default function ShareReceiptDropdown({
+  txn,
+}: {
+  txn: TransactionViewRow;
+}) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -66,7 +70,10 @@ export default function ShareReceiptDropdown({ txn }: { txn: RecentTransactionRo
         );
         break;
       case "sms":
-        window.open(`sms:?body=${encodeURIComponent(`${summary} ${receiptUrl}`)}`, "_self");
+        window.open(
+          `sms:?body=${encodeURIComponent(`${summary} ${receiptUrl}`)}`,
+          "_self",
+        );
         break;
       case "pdf":
       case "image":

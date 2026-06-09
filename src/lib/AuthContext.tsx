@@ -6,6 +6,7 @@ import {
   registerBusiness as apiRegisterBusiness,
   getCurrentUser,
   getMe,
+  getStoredWalletAddress,
   logout as apiLogout,
   isAuthenticated as checkAuth,
   type UserResponse,
@@ -25,6 +26,8 @@ interface AuthContextType {
   authenticated: boolean;
   // kyb_verified flag from /me. null while we haven't fetched yet.
   kybVerified: boolean | null;
+  // wallet_address from the login response, persisted across reloads.
+  walletAddress: string | null;
   login: (data: LoginSchema) => Promise<void>;
   register: (data: BusinessSignupSchema) => Promise<SignupBusinessResult>;
   logout: () => void;
@@ -40,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   const clearSession = useCallback(() => {
     setUser(null);
@@ -47,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setKybSummary(null);
     setRole(null);
     setAuthenticated(false);
+    setWalletAddress(null);
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -62,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(claims);
       setAuthenticated(true);
     }
+    setWalletAddress(getStoredWalletAddress());
 
     try {
       const me = await getMe();
@@ -74,6 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setBusiness(me.business);
       setKybSummary(me.kyb_summary);
       setRole(me.role);
+      // /me does not currently return wallet_address; the canonical source is
+      // the login response, persisted to localStorage. Only overwrite when
+      // /me actually carries an address so we don't wipe the stored one.
+      setWalletAddress(me.wallet_address ?? getStoredWalletAddress());
       setAuthenticated(true);
     } catch {
       // authedFetch already handles 401 by clearing tokens and redirecting.
@@ -97,7 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser]);
 
   const login = async (data: LoginSchema) => {
-    await apiLogin(data);
+    const token = await apiLogin(data);
+    setWalletAddress(token.wallet_address ?? null);
     await refreshUser();
   };
 
@@ -122,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         authenticated,
         kybVerified,
+        walletAddress,
         login,
         register,
         logout,

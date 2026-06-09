@@ -1,34 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import BasicInfoStep from "@/components/onboarding/BasicInfoStep";
 import BusinessDetailsStep from "@/components/onboarding/BusinessDetailsStep";
-import OnboardingStepper, {
-  type OnboardingStep,
-} from "@/components/onboarding/OnboardingStepper";
 import { useAuth } from "@/lib/AuthContext";
 import { useOnboarding } from "@/lib/onboarding/OnboardingContext";
 import { submitKybAndInitiate } from "@/lib/onboarding/kybSubmit";
-import type { BasicInfoProfile, BusinessDetails } from "@/lib/onboarding/types";
-
-function initialStep(hasProfile: boolean): OnboardingStep {
-  return hasProfile ? "business-details" : "basic-info";
-}
+import type { BusinessDetails } from "@/lib/onboarding/types";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, authenticated, loading: authLoading, kybVerified } = useAuth();
-  const { ready, state, hasBusinessDetails, saveProfile, saveBusiness } =
-    useOnboarding();
-  // Defer step initialization until prefill completes so the initial step
-  // reflects server-derived state, not just an empty draft.
-  const [step, setStep] = useState<OnboardingStep | null>(null);
-  if (ready && step === null) {
-    setStep(initialStep(Boolean(state.profile)));
-  }
+  const { ready, state, saveBusiness } = useOnboarding();
 
   useEffect(() => {
     if (authLoading) return;
@@ -51,8 +36,7 @@ export default function OnboardingPage() {
     authLoading ||
     !authenticated ||
     kybVerified === true ||
-    !ready ||
-    step === null
+    !ready
   ) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -60,11 +44,6 @@ export default function OnboardingPage() {
       </div>
     );
   }
-
-  const handleBasicInfoSubmit = async (profile: BasicInfoProfile) => {
-    saveProfile(profile);
-    setStep("business-details");
-  };
 
   const handleBusinessSubmit = async (business: BusinessDetails) => {
     if (!user?.id) {
@@ -77,7 +56,7 @@ export default function OnboardingPage() {
     const result = await submitKybAndInitiate(
       user.business_id,
       business,
-      state.profile,
+      null,
       user.email,
     );
     saveBusiness(business);
@@ -93,34 +72,24 @@ export default function OnboardingPage() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="space-y-6 sm:space-y-8"
+      className="space-y-5 sm:space-y-6"
     >
       <div>
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-          Tier 1 : Basic Verification
+          Tier 1 Basic Verification
         </h1>
         <p className="mt-1.5 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-          A few details about you and your business and you&apos;re good to go.
+          Business details, owners, and directors in one guided flow.
         </p>
         <hr className="w-full border-gray-200 dark:border-gray-800 mt-3 sm:my-4" />
       </div>
 
-      <OnboardingStepper
-        current={step}
-        basicInfoDone={Boolean(state.profile)}
-        businessDetailsDone={hasBusinessDetails}
-      />
-
-      <div className="rounded-2xl bg-white dark:bg-gray-950 p-0 sm:p-8">
-        {step === "basic-info" ? (
-          <BasicInfoStep initial={state.profile} onSubmit={handleBasicInfoSubmit} />
-        ) : (
-          <BusinessDetailsStep
-            initial={state.business}
-            onSubmit={handleBusinessSubmit}
-            onBack={() => setStep("basic-info")}
-          />
-        )}
+      <div className="rounded-2xl bg-white dark:bg-gray-950 p-0 sm:p-6">
+        <BusinessDetailsStep
+          initial={state.business}
+          onSubmit={handleBusinessSubmit}
+          onDraftChange={saveBusiness}
+        />
       </div>
     </motion.div>
   );

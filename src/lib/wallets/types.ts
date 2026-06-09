@@ -1,15 +1,5 @@
 export type WalletKind = "embedded" | "external";
 
-export type WalletPreference = "embedded" | "external";
-
-export type ExternalConnectorType =
-  | "metamask"
-  | "coinbase_wallet"
-  | "wallet_connect"
-  | "rainbow"
-  | "phantom"
-  | "external";
-
 /** Single source-of-truth wallet object the UI consumes. */
 export type LiveWallet = {
   /** EVM address (lowercased canonical form). */
@@ -17,7 +7,7 @@ export type LiveWallet = {
   /** Display label — ENS name, connector label, or short address fallback. */
   label: string;
   kind: WalletKind;
-  /** Connector identifier reported by Privy (`walletClientType`). */
+  /** Connector identifier (always "elementpay" for the backend-issued wallet). */
   connectorType: string;
   /** Active chain id reported by the wallet (when known). */
   chainId?: number;

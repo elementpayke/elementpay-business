@@ -1,6 +1,5 @@
 "use client";
 
-import { Plus, Wallet as WalletIcon } from "lucide-react";
 import Skeleton from "@/components/dashboard/Skeleton";
 
 export function ConsolidatedBalanceSkeleton() {
@@ -47,19 +46,7 @@ export function WalletListSkeleton() {
     <div className="space-y-3">
       <p className="text-sm font-semibold text-[#1C2238]">Your wallets</p>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-[#D5D9E6] bg-white px-3 py-3 text-sm font-semibold text-[#3F465E]/60">
-          <WalletIcon className="h-4 w-4" />
-          Add wallet
-        </div>
-        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-primary-200 bg-primary-100/30 px-3 py-3 text-sm font-semibold text-primary-500/60">
-          <Plus className="h-4 w-4" />
-          Create new wallet
-        </div>
-      </div>
-
       <div className="space-y-3">
-        <WalletCardSkeleton />
         <WalletCardSkeleton />
       </div>
     </div>

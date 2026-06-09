@@ -7,9 +7,16 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 export type BusinessType =
   | "SoleTrader"
   | "LimitedCompany"
+  | "LimitedLiabilityCompany"
   | "Partnership"
   | "NonProfit"
   | "Other";
+
+export type OwnershipType =
+  | "Private"
+  | "Public"
+  | "Government"
+  | "NonProfit";
 
 export type EstimatedEmployees =
   | "1-10"
@@ -119,7 +126,7 @@ export interface KybProfilePayload {
   annual_revenue_range?: AnnualRevenueRange;
   source_of_funds?: SourceOfFunds;
   incorporation_date?: string;
-  ownership_type?: string;
+  ownership_type?: OwnershipType;
   estimated_monthly_turnover?: EstimatedMonthlyTurnover;
   estimated_transaction_value?: EstimatedTransactionValue;
   monthly_transaction_frequency?: MonthlyTransactionFrequency;

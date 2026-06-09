@@ -10,45 +10,24 @@ export const paymentMethodsByCountry: Record<Country, string[]> = {
   Tanzania: ["M-Pesa", "Tigo Pesa", "Bank Transfer"],
 };
 
-export type SavedRecipient = {
-  name: string;
-  email: string;
-  country: Country;
-  paymentMethod: string;
-  flag: string;
-  label: string;
-  phoneNumber?: string;
+export const COUNTRY_CODE: Record<Country, string> = {
+  Kenya: "KE",
+  Nigeria: "NG",
+  Ghana: "GH",
+  Uganda: "UG",
+  Tanzania: "TZ",
 };
 
-export const savedRecipients: SavedRecipient[] = [
-  {
-    name: "Aly Mitsumi",
-    email: "alymitsumi@elementpay.com",
-    country: "Kenya",
-    paymentMethod: "M-Pesa Mobile Money",
-    flag: "🇰🇪",
-    label: "Kenya",
-    phoneNumber: "254790284024",
-  },
-  {
-    name: "Sarah Okonkwo",
-    email: "sakonkwo@elementpay.com",
-    country: "Nigeria",
-    paymentMethod: "GT Bank",
-    flag: "🇳🇬",
-    label: "Nigeria",
-  },
-  {
-    name: "John Mensah",
-    email: "johnmensah@elementpay.com",
-    country: "Ghana",
-    paymentMethod: "Vodafone Cash",
-    flag: "🇬🇭",
-    label: "Ghana",
-  },
-];
+export const COUNTRY_CURRENCY: Record<Country, string> = {
+  Kenya: "KES",
+  Nigeria: "NGN",
+  Ghana: "GHS",
+  Uganda: "UGX",
+  Tanzania: "TZS",
+};
 
-export const sourceWallets = ["KES Operating Wallet", "USD Treasury Wallet", "NGN Collection Wallet"];
-export const payoutCurrencies = ["KES", "USD", "NGN", "GHS"];
+export function isMobileMoneyMethod(method: string): boolean {
+  return /m-?pesa|momo|airtel|vodafone|mobile money/i.test(method);
+}
 
 export const stepLabels = ["Recipient details", "Payment amount", "Payment review"];

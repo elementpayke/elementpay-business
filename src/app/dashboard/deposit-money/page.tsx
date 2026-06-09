@@ -6,7 +6,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import DepositStepper from "@/components/deposit/DepositStepper";
 import DepositDetailsStep from "@/components/deposit/DepositDetailsStep";
 import ConfirmDepositStep from "@/components/deposit/ConfirmDepositStep";
-import DepositLoadingStep from "@/components/deposit/DepositLoadingStep";
 import DepositSuccessStep from "@/components/deposit/DepositSuccessStep";
 import DepositErrorStep from "@/components/deposit/DepositErrorStep";
 import { useDepositStore } from "@/stores/depositStore";
@@ -67,7 +66,6 @@ export default function DepositMoneyPage() {
 
         {phase === "deposit-details" ? <DepositDetailsStep /> : null}
         {phase === "confirm-deposit" ? <ConfirmDepositStep /> : null}
-        {phase === "processing" ? <DepositLoadingStep /> : null}
         {phase === "success" ? <DepositSuccessStep /> : null}
         {phase === "error" ? <DepositErrorStep /> : null}
       </div>

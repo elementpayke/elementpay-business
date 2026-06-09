@@ -1,46 +1,43 @@
+import type { MeBusiness } from "@/lib/auth";
 import type {
   Address as KybAddress,
   Associate as KybAssociate,
   KybProfileResponse,
 } from "@/lib/kyb";
 import {
+  emptyAddress,
   emptyBusinessDetails,
   emptyStakeholder,
   normalizeBusinessType,
+  type AnnualRevenueRange,
   type AssociateRelationshipType,
   type BasicInfoProfile,
   type BusinessAddress,
   type BusinessDetails,
-  type DateOfBirth,
+  type EstimatedEmployees,
+  type EstimatedMonthlyTurnover,
+  type EstimatedTransactionValue,
+  type IdType,
+  type MonthlyTransactionFrequency,
   type OnboardingState,
+  type OwnershipType,
+  type SourceOfFunds,
   type Stakeholder,
+  type StakeholderIdentity,
 } from "@/lib/onboarding/types";
 
-// Reverse of dobToIso in kybSubmit.ts: "YYYY-MM-DD" -> DateOfBirth, with
-// lossy/empty values falling back to "" so the form selects render blank.
-function isoToDob(value: string | null | undefined): DateOfBirth {
-  if (!value) return { day: "", month: "", year: "" };
+function normalizeIso(value: string | null | undefined): string {
+  if (!value) return "";
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  if (!m) return { day: "", month: "", year: "" };
-  return {
-    year: m[1],
-    month: String(Number(m[2])),
-    day: String(Number(m[3])),
-  };
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : "";
 }
 
 function mapAddress(
-  source: KybAddress | undefined,
+  source: KybAddress | undefined | null,
   fallbackCountry: string,
 ): BusinessAddress {
   if (!source) {
-    return {
-      line1: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      countryCode: fallbackCountry,
-    };
+    return { ...emptyAddress(), countryCode: fallbackCountry };
   }
   return {
     line1: source.street ?? "",
@@ -68,38 +65,125 @@ function mapRelationships(
   return filtered.length > 0 ? filtered : ["Director"];
 }
 
-function mapStakeholder(a: KybAssociate): Stakeholder {
+const VALID_ID_TYPES: ReadonlyArray<IdType> = [
+  "Passport",
+  "NationalIDCard",
+  "DrivingLicense",
+  "ResidencePermit",
+];
+
+function mapIdentity(
+  identities: KybAssociate["identities"] | undefined,
+  fallbackCountry: string,
+): StakeholderIdentity {
+  const first = identities?.[0];
+  if (!first) {
+    return {
+      idType: "NationalIDCard",
+      idNumber: "",
+      issuingCountryCode: fallbackCountry,
+    };
+  }
+  return {
+    idType: (VALID_ID_TYPES as readonly string[]).includes(first.id_type)
+      ? (first.id_type as IdType)
+      : "NationalIDCard",
+    idNumber: first.id_number ?? "",
+    issuingCountryCode: first.issuing_country ?? fallbackCountry,
+  };
+}
+
+function mapStakeholder(a: KybAssociate, fallbackCountry: string): Stakeholder {
   const base = emptyStakeholder();
+  const taxCountry = a.tax_residence_country ?? fallbackCountry;
   return {
     id: a.id ?? base.id,
     firstName: a.full_name?.first_name ?? "",
     lastName: a.full_name?.last_name ?? "",
     relationshipTypes: mapRelationships(a.relationship_types),
-    dateOfBirth: isoToDob(a.date_of_birth),
+    dateOfBirth: normalizeIso(a.date_of_birth),
+    email: a.email ?? "",
+    phoneNumber: a.phone_number ?? "",
+    taxResidenceCountryCode: taxCountry,
+    residentialAddress: mapAddress(a.residential_address, taxCountry),
+    identity: mapIdentity(a.identities, taxCountry),
   };
 }
 
-// Build the form-shaped BusinessDetails from a server KybProfileResponse.
-// Missing fields fall back to the form's empty defaults so the UI stays valid.
+function asEnum<T extends string>(
+  value: unknown,
+  allowed: ReadonlyArray<T>,
+): T | "" {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : "";
+}
+
+const EMPLOYEE_OPTS: ReadonlyArray<EstimatedEmployees> = [
+  "1-10", "11-50", "51-200", "201-1000", "1000+",
+];
+const REVENUE_OPTS: ReadonlyArray<AnnualRevenueRange> = [
+  "LessThan100k", "100kTo1M", "1MTo10M", "MoreThan10M",
+];
+const FUNDS_OPTS: ReadonlyArray<SourceOfFunds> = [
+  "Revenue", "Investment", "Loans", "Grants", "Other",
+];
+const OWNERSHIP_OPTS: ReadonlyArray<OwnershipType> = [
+  "Private", "Public", "Government", "NonProfit",
+];
+const TURNOVER_OPTS: ReadonlyArray<EstimatedMonthlyTurnover> = [
+  "UpTo10k", "UpTo50k", "UpTo100k", "UpTo500k", "Over500k",
+];
+const TXN_VALUE_OPTS: ReadonlyArray<EstimatedTransactionValue> = [
+  "UpTo10k", "UpTo50k", "UpTo100k", "UpTo500k", "Over500k",
+];
+const TXN_FREQ_OPTS: ReadonlyArray<MonthlyTransactionFrequency> = [
+  "UpTo5", "UpTo20", "UpTo50", "UpTo200", "Over200",
+];
+
+// Build the form-shaped BusinessDetails from a server KybProfileResponse,
+// using the MeBusiness record (which carries trade name) as a fallback when
+// kyb_summary fields are missing. The form's "Company name" prefers
+// business.name from /auth/me over kyb_summary.legal_name.
 export function profileToBusinessDetails(
   profile: KybProfileResponse,
+  business?: MeBusiness | null,
 ): BusinessDetails {
   const defaults = emptyBusinessDetails();
-  const country = profile.country ?? defaults.registrationCountryCode;
+  const country =
+    profile.country ?? business?.country ?? defaults.registrationCountryCode;
   const address = mapAddress(profile.registered_address, country);
   const stakeholders =
     profile.associates && profile.associates.length > 0
-      ? profile.associates.map(mapStakeholder)
+      ? profile.associates.map((a) => mapStakeholder(a, country))
       : defaults.stakeholders;
 
+  const tradeName = business?.name?.trim();
+  const legalName = tradeName || profile.legal_name?.trim() || "";
+
   return {
-    legalName: profile.legal_name ?? "",
-    registrationNumber: profile.registration_number ?? "",
-    taxId: profile.tax_id ?? "",
+    legalName,
     entityType: normalizeBusinessType(profile.business_type ?? ""),
     registrationCountryCode: country,
-    incorporationDate: isoToDob(profile.incorporation_date),
+    incorporationDate: normalizeIso(profile.incorporation_date),
     websiteUrl: profile.website ?? "",
+    industry: profile.industry ?? "",
+    estimatedEmployees: asEnum(profile.estimated_employees, EMPLOYEE_OPTS),
+    annualRevenueRange: asEnum(profile.annual_revenue_range, REVENUE_OPTS),
+    sourceOfFunds: asEnum(profile.source_of_funds, FUNDS_OPTS),
+    ownershipType: asEnum(profile.ownership_type, OWNERSHIP_OPTS),
+    estimatedMonthlyTurnover: asEnum(
+      profile.estimated_monthly_turnover,
+      TURNOVER_OPTS,
+    ),
+    estimatedTransactionValue: asEnum(
+      profile.estimated_transaction_value,
+      TXN_VALUE_OPTS,
+    ),
+    monthlyTransactionFrequency: asEnum(
+      profile.monthly_transaction_frequency,
+      TXN_FREQ_OPTS,
+    ),
     address,
     stakeholders,
   };
@@ -121,20 +205,13 @@ export function profileToBasicInfo(
     country: "",
     countryCode: owner.tax_residence_country ?? "",
     phoneNumber: owner.phone_number ?? "",
-    dateOfBirth: isoToDob(owner.date_of_birth),
+    dateOfBirth: normalizeIso(owner.date_of_birth),
   };
 }
 
 // Field-level merge: server value wins when non-empty, otherwise local value.
-// Applied per leaf field so a partially-completed local draft is never blown
-// away by a sparse server response.
 function pickNonEmpty<T extends string>(server: T, local: T): T {
   return server && server.trim() !== "" ? server : local;
-}
-
-function mergeDate(server: DateOfBirth, local: DateOfBirth): DateOfBirth {
-  const hasServer = server.day && server.month && server.year;
-  return hasServer ? server : local;
 }
 
 function mergeAddress(
@@ -157,21 +234,25 @@ export function mergeBusinessDetails(
   if (!local) return server;
   return {
     legalName: pickNonEmpty(server.legalName, local.legalName),
-    registrationNumber: pickNonEmpty(
-      server.registrationNumber,
-      local.registrationNumber,
-    ),
-    taxId: pickNonEmpty(server.taxId, local.taxId),
     entityType: server.entityType || local.entityType,
     registrationCountryCode: pickNonEmpty(
       server.registrationCountryCode,
       local.registrationCountryCode,
     ),
-    incorporationDate: mergeDate(server.incorporationDate, local.incorporationDate),
+    incorporationDate: pickNonEmpty(server.incorporationDate, local.incorporationDate),
     websiteUrl: pickNonEmpty(server.websiteUrl, local.websiteUrl),
+    industry: pickNonEmpty(server.industry, local.industry),
+    estimatedEmployees: server.estimatedEmployees || local.estimatedEmployees,
+    annualRevenueRange: server.annualRevenueRange || local.annualRevenueRange,
+    sourceOfFunds: server.sourceOfFunds || local.sourceOfFunds,
+    ownershipType: server.ownershipType || local.ownershipType,
+    estimatedMonthlyTurnover:
+      server.estimatedMonthlyTurnover || local.estimatedMonthlyTurnover,
+    estimatedTransactionValue:
+      server.estimatedTransactionValue || local.estimatedTransactionValue,
+    monthlyTransactionFrequency:
+      server.monthlyTransactionFrequency || local.monthlyTransactionFrequency,
     address: mergeAddress(server.address, local.address),
-    // Stakeholders are an array — if the server has any, prefer those (they're
-    // the source of truth after a submit attempt); otherwise keep local edits.
     stakeholders:
       server.stakeholders.length > 0 ? server.stakeholders : local.stakeholders,
   };
@@ -186,12 +267,10 @@ export function mergeBasicInfo(
   return {
     firstName: pickNonEmpty(server.firstName, local.firstName),
     lastName: pickNonEmpty(server.lastName, local.lastName),
-    // Local 'country' (full name) is richer than what we can derive from
-    // server's ISO-2, so prefer local here.
     country: local.country || server.country,
     countryCode: pickNonEmpty(local.countryCode, server.countryCode),
     phoneNumber: pickNonEmpty(local.phoneNumber, server.phoneNumber),
-    dateOfBirth: mergeDate(local.dateOfBirth, server.dateOfBirth),
+    dateOfBirth: pickNonEmpty(local.dateOfBirth, server.dateOfBirth),
   };
 }
 

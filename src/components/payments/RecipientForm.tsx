@@ -1,40 +1,45 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown } from "lucide-react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import {
-  countries,
-  paymentMethodsByCountry,
-  type Country,
-  type SavedRecipient,
-} from "@/components/payments/paymentData";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
-import { validateKenyanPhoneNumber } from "@/lib/phoneValidation";
-import Flag from "@/components/dashboard/Flag";
-
-const MPESA_METHODS = new Set(["M-Pesa Mobile Money", "M-Pesa Paybill"]);
+import {
+  useCatalogDirection,
+  type CatalogCountryOption,
+  type CatalogMethodOption,
+} from "@/lib/catalog/useCatalog";
+import BankProviderSelect from "@/components/deposit/BankProviderSelect";
 
 const recipientSchema = z
   .object({
     email: z.string().email("Enter a valid email address"),
-    country: z.enum(countries, { message: "Select a country" }),
-    paymentMethod: z.string().min(1, "Select a payment method"),
-    phoneNumber: z.string().optional(),
+    countryCode: z.string().min(2, "Select a country"),
+    /** A CatalogMethodOption `optionKey`: "mobile_money" | "bank" | "rail:<type>". */
+    methodKey: z.string().min(1, "Select a payment method"),
+    accountNumber: z.string().min(3, "Enter the account number"),
+    accountName: z.string().min(2, "Enter the account name"),
+    bankCode: z.string().optional(),
+    bankPhoneNumber: z.string().optional(),
   })
-  .superRefine((value, ctx) => {
-    if (
-      value.country === "Kenya" &&
-      MPESA_METHODS.has(value.paymentMethod)
-    ) {
-      const res = validateKenyanPhoneNumber(value.phoneNumber ?? "");
-      if (!res.isValid) {
+  .superRefine((data, ctx) => {
+    // Every non-momo option (bank + offramp rails) is an account payout that
+    // needs a bank/provider selection and a notification phone.
+    if (data.methodKey && data.methodKey !== "mobile_money") {
+      if (!data.bankCode || data.bankCode.trim().length < 2) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["phoneNumber"],
-          message: res.error ?? "Invalid phone number",
+          code: "custom",
+          path: ["bankCode"],
+          message: "Select or enter the bank.",
+        });
+      }
+      if (!data.bankPhoneNumber || data.bankPhoneNumber.trim().length < 6) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["bankPhoneNumber"],
+          message: "Enter a notification phone number.",
         });
       }
     }
@@ -42,10 +47,25 @@ const recipientSchema = z
 
 export type RecipientFormValues = z.infer<typeof recipientSchema>;
 
+/** What the parent step needs to persist into the send-payment store. */
+export type RecipientSubmit = {
+  email: string;
+  countryCode: string;
+  countryName: string;
+  receiveCurrency: string;
+  methodKey: "momo" | "bank";
+  /** Exact catalog option chosen — lets us restore the picker on back-nav. */
+  methodOptionKey: string;
+  methodLabel: string;
+  accountNumber: string;
+  accountName: string;
+  bankCode?: string;
+  bankPhoneNumber?: string;
+};
+
 type RecipientFormProps = {
   initialValues?: Partial<RecipientFormValues>;
-  selectedRecipient?: SavedRecipient | null;
-  onSubmit: (values: RecipientFormValues) => void;
+  onSubmit: (values: RecipientSubmit) => void;
 };
 
 function FieldError({ message }: { message?: string }) {
@@ -54,11 +74,11 @@ function FieldError({ message }: { message?: string }) {
   ) : null;
 }
 
-export default function RecipientForm({
-  initialValues,
-  selectedRecipient,
-  onSubmit,
-}: RecipientFormProps) {
+export default function RecipientForm({ initialValues, onSubmit }: RecipientFormProps) {
+  // Send Payment is an off-ramp (crypto → fiat payout), so corridors,
+  // methods, providers and rails come from the offramp catalog payload.
+  const { countries, getMethods, isLoading, error } = useCatalogDirection("offramp");
+
   const {
     register,
     control,
@@ -71,48 +91,72 @@ export default function RecipientForm({
     mode: "onChange",
     defaultValues: {
       email: initialValues?.email ?? "",
-      country: initialValues?.country,
-      paymentMethod: initialValues?.paymentMethod ?? "",
-      phoneNumber: initialValues?.phoneNumber ?? "",
+      countryCode: initialValues?.countryCode ?? "",
+      methodKey: initialValues?.methodKey ?? "",
+      accountNumber: initialValues?.accountNumber ?? "",
+      accountName: initialValues?.accountName ?? "",
+      bankCode: initialValues?.bankCode ?? "",
+      bankPhoneNumber: initialValues?.bankPhoneNumber ?? "",
     },
   });
 
-  const selectedCountry = useWatch({ control, name: "country" });
-  const selectedMethod = useWatch({ control, name: "paymentMethod" });
-  const methods = selectedCountry
-    ? paymentMethodsByCountry[selectedCountry as Country]
-    : [];
-  const needsKenyanPhone =
-    selectedCountry === "Kenya" && MPESA_METHODS.has(selectedMethod);
+  const selectedCountryCode = useWatch({ control, name: "countryCode" });
+  // Holds the selected option's `optionKey` (unique per country).
+  const selectedOptionKey = useWatch({ control, name: "methodKey" });
 
-  // Sync from saved-recipient quick-select
-  useEffect(() => {
-    if (!selectedRecipient) return;
-    setValue("email", selectedRecipient.email, { shouldValidate: true });
-    setValue("country", selectedRecipient.country, { shouldValidate: true });
-    setValue("paymentMethod", selectedRecipient.paymentMethod, {
-      shouldValidate: true,
-    });
-    setValue("phoneNumber", selectedRecipient.phoneNumber ?? "", {
-      shouldValidate: true,
-    });
-  }, [selectedRecipient, setValue]);
+  const selectedCountry = useMemo<CatalogCountryOption | null>(
+    () => countries.find((c) => c.code === selectedCountryCode) ?? null,
+    [countries, selectedCountryCode],
+  );
 
-  // Reset payment method when country changes to a new set of options
+  const methods = useMemo<CatalogMethodOption[]>(
+    () => getMethods(selectedCountryCode || null),
+    [getMethods, selectedCountryCode],
+  );
+
+  const selectedMethod = useMemo<CatalogMethodOption | null>(
+    () => methods.find((m) => m.optionKey === selectedOptionKey) ?? null,
+    [methods, selectedOptionKey],
+  );
+
+  // Drop a stale method when the country changes its available set.
   useEffect(() => {
-    if (!selectedCountry) return;
-    const availableMethods =
-      paymentMethodsByCountry[selectedCountry as Country];
-    const currentMethod = getValues("paymentMethod");
-    if (currentMethod && !availableMethods.includes(currentMethod)) {
-      setValue("paymentMethod", "", { shouldValidate: true });
+    if (!selectedCountryCode) return;
+    const current = getValues("methodKey");
+    if (current && !methods.some((m) => m.optionKey === current)) {
+      setValue("methodKey", "", { shouldValidate: true });
+      setValue("bankCode", "", { shouldValidate: true });
     }
-  }, [selectedCountry, setValue, getValues]);
+  }, [selectedCountryCode, methods, setValue, getValues]);
+
+  const isMomo = selectedMethod?.key === "momo";
+  const accountNumberLabel = isMomo
+    ? "Recipient phone number"
+    : "Recipient account number";
+  const accountNumberPlaceholder = isMomo ? "+254711111111" : "Account number";
+
+  function submit(values: RecipientFormValues) {
+    const country = countries.find((c) => c.code === values.countryCode);
+    const method = methods.find((m) => m.optionKey === values.methodKey);
+    if (!country || !method) return;
+    onSubmit({
+      email: values.email,
+      countryCode: country.code,
+      countryName: country.name,
+      receiveCurrency: country.currency,
+      methodKey: method.key,
+      methodOptionKey: method.optionKey,
+      methodLabel: method.label,
+      accountNumber: values.accountNumber,
+      accountName: values.accountName,
+      bankCode: isMomo ? undefined : values.bankCode?.trim() || undefined,
+      bankPhoneNumber: isMomo ? undefined : values.bankPhoneNumber?.trim() || undefined,
+    });
+  }
 
   return (
     <div className={cardClassName("p-4 sm:p-5")}>
-      <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-        {/* ── Email ──────────────────────────────────────────────────────── */}
+      <form className="space-y-4" onSubmit={handleSubmit(submit)}>
         <div>
           <label className="mb-2 block text-xs text-[#4D556D]">
             Recipient&apos;s email address
@@ -125,104 +169,121 @@ export default function RecipientForm({
           <FieldError message={errors.email?.message} />
         </div>
 
-        {/* ── Country ────────────────────────────────────────────────────── */}
         <div>
           <label className="mb-2 block text-xs text-[#4D556D]">
             Recipient&apos;s country
           </label>
           <div className="relative">
             <select
-              {...register("country")}
-              defaultValue={initialValues?.country ?? ""}
-              className="h-12 w-full appearance-none rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
+              {...register("countryCode")}
+              disabled={isLoading || !!error || countries.length === 0}
+              className="h-12 w-full appearance-none rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white disabled:opacity-60"
             >
-              <option value="">Select the country of the recipient</option>
+              <option value="">
+                {error
+                  ? "Couldn't load countries"
+                  : isLoading
+                    ? "Loading countries…"
+                    : "Select the country of the recipient"}
+              </option>
               {countries.map((country) => (
-                <option key={country} value={country}>
-                  {country}
+                <option key={country.code} value={country.code}>
+                  {country.flag} {country.name} ({country.currency})
                 </option>
               ))}
             </select>
             <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3B6]" />
           </div>
-          <FieldError message={errors.country?.message} />
+          <FieldError message={errors.countryCode?.message} />
         </div>
 
-        {/* ── Payment method ─────────────────────────────────────────────── */}
         <div>
           <label className="mb-2 block text-xs text-[#4D556D]">
             How would you like to pay this recipient?
           </label>
           <div className="relative">
             <select
-              {...register("paymentMethod")}
-              defaultValue={initialValues?.paymentMethod ?? ""}
-              className="h-12 w-full appearance-none rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
+              {...register("methodKey")}
+              disabled={!selectedCountry || methods.length === 0}
+              className="h-12 w-full appearance-none rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white disabled:opacity-60"
             >
               <option value="">Select a payment method</option>
               {methods.map((method) => (
-                <option key={method} value={method}>
-                  {method}
+                <option key={method.optionKey} value={method.optionKey}>
+                  {method.label}
                 </option>
               ))}
             </select>
             <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3B6]" />
           </div>
-          <FieldError message={errors.paymentMethod?.message} />
+          <FieldError message={errors.methodKey?.message} />
         </div>
 
-        {/* ── Kenyan M-Pesa phone number ─────────────────────────────────── */}
-        {needsKenyanPhone ? (
-          <div>
-            <label className="mb-2 block text-xs text-[#4D556D]">
-              Recipient&apos;s phone number (Safaricom)
-            </label>
+        <div>
+          <label className="mb-2 block text-xs text-[#4D556D]">{accountNumberLabel}</label>
+          <input
+            {...register("accountNumber")}
+            placeholder={accountNumberPlaceholder}
+            className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
+          />
+          <FieldError message={errors.accountNumber?.message} />
+        </div>
 
-            {/*
-              Unified container — flag + dial code on the left, input on the right.
-              Mirrors the same pattern used in AmountStep's currency badge.
-            */}
-            <div
-              className="
-                flex h-12 items-center overflow-hidden
-                rounded-xl border border-[#ECEEF4] bg-[#FAFBFE]
-                transition-colors focus-within:border-primary-300 focus-within:bg-white
-              "
-            >
-              {/* Country prefix badge */}
-              <div className="flex shrink-0 items-center gap-2 px-3">
-                <Flag code="KE" size={18} />
-                <span className="text-sm font-medium text-[#4D556D]">
-                  +254
-                </span>
+        <div>
+          <label className="mb-2 block text-xs text-[#4D556D]">Account name</label>
+          <input
+            {...register("accountName")}
+            placeholder="Name registered with the account"
+            className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
+          />
+          <FieldError message={errors.accountName?.message} />
+        </div>
+
+        {selectedMethod && !isMomo ? (
+          <>
+            {selectedMethod.providers.length > 0 ? (
+              <div>
+                <Controller
+                  control={control}
+                  name="bankCode"
+                  render={({ field }) => (
+                    <BankProviderSelect
+                      providers={selectedMethod.providers}
+                      value={field.value ?? ""}
+                      onChange={(code) => field.onChange(code)}
+                    />
+                  )}
+                />
+                <FieldError message={errors.bankCode?.message} />
               </div>
+            ) : (
+              <div>
+                <label className="mb-2 block text-xs text-[#4D556D]">
+                  Bank code (SWIFT/BIC or local)
+                </label>
+                <input
+                  {...register("bankCode")}
+                  placeholder="KCBLKENX"
+                  className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm uppercase text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
+                />
+                <FieldError message={errors.bankCode?.message} />
+              </div>
+            )}
 
-              {/* Divider */}
-              <div className="h-6 w-px shrink-0 bg-[#ECEEF4]" />
-
-              {/* Phone input */}
+            <div>
+              <label className="mb-2 block text-xs text-[#4D556D]">
+                Notification phone number
+              </label>
               <input
-                {...register("phoneNumber", {
-                  setValueAs: (raw: string) => {
-                    const digits = (raw ?? "").replace(/\D/g, "");
-                    if (!digits) return "";
-                    if (digits.startsWith("254")) return digits;
-                    if (digits.startsWith("0"))
-                      return `254${digits.slice(1)}`;
-                    return `254${digits}`;
-                  },
-                })}
-                inputMode="tel"
-                placeholder="7XX XXX XXX"
-                className="h-full flex-1 bg-transparent px-4 text-sm text-[#1F2640] outline-none placeholder:text-[#B0B7CE]"
+                {...register("bankPhoneNumber")}
+                placeholder="+254711111111"
+                className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
               />
+              <FieldError message={errors.bankPhoneNumber?.message} />
             </div>
-
-            <FieldError message={errors.phoneNumber?.message} />
-          </div>
+          </>
         ) : null}
 
-        {/* ── Submit ─────────────────────────────────────────────────────── */}
         <button
           type="submit"
           disabled={!isValid}

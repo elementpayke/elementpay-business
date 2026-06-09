@@ -9,12 +9,7 @@ import { shortAddress } from "@/lib/wallets/wallet-selection";
 type CopyHandler = (value: string, message?: string) => void;
 
 const CONNECTOR_LABEL: Record<string, string> = {
-  privy: "Privy embedded wallet",
-  metamask: "MetaMask",
-  coinbase_wallet: "Coinbase Wallet",
-  wallet_connect: "WalletConnect",
-  rainbow: "Rainbow",
-  phantom: "Phantom",
+  elementpay: "ElementPay wallet",
 };
 
 const EXPLORER_BASE = "https://basescan.org/address/";
@@ -64,7 +59,7 @@ export default function AccountRails({
   wallet: LiveWallet;
   copy: CopyHandler;
 }) {
-  const connectorLabel = CONNECTOR_LABEL[wallet.connectorType] ?? "External wallet";
+  const connectorLabel = CONNECTOR_LABEL[wallet.connectorType] ?? "ElementPay wallet";
   const explorerHref = `${EXPLORER_BASE}${wallet.address}`;
 
   return (

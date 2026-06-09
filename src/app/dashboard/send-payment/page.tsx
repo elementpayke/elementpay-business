@@ -6,16 +6,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Stepper from "@/components/payments/Stepper";
 import AmountStep from "@/components/payments/steps/AmountStep";
 import ErrorStep from "@/components/payments/steps/ErrorStep";
-import PinStep from "@/components/payments/steps/PinStep";
-import ProcessingStep from "@/components/payments/steps/ProcessingStep";
 import RecipientStep from "@/components/payments/steps/RecipientStep";
 import ReviewStep from "@/components/payments/steps/ReviewStep";
 import SuccessStep from "@/components/payments/steps/SuccessStep";
 import { phaseToStep, useSendPaymentStore } from "@/stores/sendPaymentStore";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// History navigation buttons (back / forward) in the page header.
-// ─────────────────────────────────────────────────────────────────────────────
 
 function HistoryButton({
   disabled = false,
@@ -45,16 +39,11 @@ function HistoryButton({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function SendPaymentPage() {
   const router = useRouter();
   const phase = useSendPaymentStore((s) => s.phase);
   const reset = useSendPaymentStore((s) => s.reset);
 
-  // Reset state when the page unmounts so returning later starts fresh.
   useEffect(() => {
     return () => {
       reset();
@@ -62,16 +51,10 @@ export default function SendPaymentPage() {
   }, [reset]);
 
   const step = phaseToStep(phase);
-
-  const allComplete =
-    phase === "pin-confirmation" ||
-    phase === "processing" ||
-    phase === "success" ||
-    phase === "error";
+  const allComplete = phase === "success" || phase === "error";
 
   return (
     <section className="space-y-6">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
       <div className="border-b border-[#E8EBF3] pb-5">
         <div className="flex items-center gap-3">
           <HistoryButton onClick={() => router.back()}>
@@ -88,19 +71,14 @@ export default function SendPaymentPage() {
         </div>
       </div>
 
-      {/* ── Content area ────────────────────────────────────────────────── */}
       <div className="mx-auto w-full max-w-[820px] space-y-4">
-        {/* Progress stepper */}
         <Stepper currentStep={step} allComplete={allComplete} />
 
-        {/* Step content panels */}
         {phase === "recipient-details" && <RecipientStep />}
-        {phase === "payment-amount"    && <AmountStep />}
-        {phase === "payment-review"    && <ReviewStep />}
-        {phase === "pin-confirmation"  && <PinStep />}
-        {phase === "processing"        && <ProcessingStep />}
-        {phase === "success"           && <SuccessStep />}
-        {phase === "error"             && <ErrorStep />}
+        {phase === "payment-amount" && <AmountStep />}
+        {phase === "payment-review" && <ReviewStep />}
+        {phase === "success" && <SuccessStep />}
+        {phase === "error" && <ErrorStep />}
       </div>
     </section>
   );

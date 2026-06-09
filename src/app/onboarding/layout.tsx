@@ -10,8 +10,8 @@ import { useOnboarding } from "@/lib/onboarding/OnboardingContext";
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { loading, authenticated, logout } = useAuth();
-  const { ready, tier1Complete } = useOnboarding();
+  const { loading, authenticated, kybVerified, logout } = useAuth();
+  const { ready } = useOnboarding();
 
   useEffect(() => {
     if (loading) return;
@@ -19,14 +19,16 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
       router.replace("/auth/login");
       return;
     }
-    if (!ready) return;
-    // Already done — bounce to dashboard.
-    if (tier1Complete) {
+    // Only bounce to dashboard once the backend confirms verification.
+    // A local "tier1Complete" draft is not a substitute — the dashboard guard
+    // gates strictly on kyb_verified, so trusting the draft here causes a loop
+    // between /onboarding and /dashboard for submitted-but-unverified users.
+    if (kybVerified === true) {
       router.replace("/dashboard");
     }
-  }, [loading, authenticated, ready, tier1Complete, router]);
+  }, [loading, authenticated, kybVerified, router]);
 
-  const gated = loading || !authenticated || !ready || tier1Complete;
+  const gated = loading || !authenticated || !ready || kybVerified === true;
 
   if (gated) {
     return (

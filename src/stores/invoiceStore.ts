@@ -88,10 +88,22 @@ function createInitialDraft(): InvoiceDraft {
   };
 }
 
+export type IssuedInvoiceSummary = {
+  id: number;
+  invoiceNumber: string;
+  publicToken: string | null;
+};
+
 type InvoiceState = {
   draft: InvoiceDraft;
+  /** Server-side draft id once persisted via POST /v1/invoices/drafts. */
+  draftId: number | null;
+  /** Set after the draft is issued via POST /v1/invoices. */
+  issued: IssuedInvoiceSummary | null;
   setDraft: (updater: (draft: InvoiceDraft) => InvoiceDraft) => void;
   resetDraft: () => void;
+  setDraftId: (id: number | null) => void;
+  setIssued: (issued: IssuedInvoiceSummary | null) => void;
   updateBiller: (patch: Partial<PartyDetails>) => void;
   updateClient: (patch: Partial<PartyDetails>) => void;
   addLineItem: () => void;
@@ -102,8 +114,12 @@ type InvoiceState = {
 
 export const useInvoiceStore = create<InvoiceState>()((set) => ({
   draft: createInitialDraft(),
+  draftId: null,
+  issued: null,
   setDraft: (updater) => set((state) => ({ draft: updater(state.draft) })),
-  resetDraft: () => set({ draft: createInitialDraft() }),
+  resetDraft: () => set({ draft: createInitialDraft(), draftId: null, issued: null }),
+  setDraftId: (id) => set({ draftId: id }),
+  setIssued: (issued) => set({ issued }),
   updateBiller: (patch) =>
     set((state) => ({ draft: { ...state.draft, biller: { ...state.draft.biller, ...patch } } })),
   updateClient: (patch) =>

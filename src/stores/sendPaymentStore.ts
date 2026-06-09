@@ -1,44 +1,50 @@
 "use client";
 
 import { create } from "zustand";
-import type { Country, SavedRecipient } from "@/components/payments/paymentData";
+import type { OrderCreateOut, QuoteOrderOut } from "@/lib/orders";
+import type { NormalizedQuoteError } from "@/lib/orderErrors";
 
 export type SendPaymentPhase =
   | "recipient-details"
   | "payment-amount"
   | "payment-review"
-  | "pin-confirmation"
-  | "processing"
   | "success"
   | "error";
 
-export type ProcessingStage = "validating" | "confirming-fee" | "initializing" | "done";
-
 export type RecipientDetails = {
   email: string;
-  country: Country;
+  /** Display country name from the catalog, e.g. "Kenya". */
+  country: string;
+  /** ISO 3166-1 alpha-2, e.g. "KE". */
+  countryCode: string;
+  /** ISO 4217 fiat the recipient receives, e.g. "KES". */
+  receiveCurrency: string;
+  /** Human label of the chosen method, e.g. "Mobile Money". */
   paymentMethod: string;
+  /** Exact catalog option chosen (CatalogMethodOption.optionKey) — restores the
+   *  picker on back-nav; distinguishes the bank method from individual rails. */
+  methodOptionKey: string;
+  accountType: "momo" | "bank";
+  accountNumber: string;
   name?: string;
-  phoneNumber?: string;
-  bankName?: string;
-  accountNumber?: string;
-  accountName?: string;
-  paybillNumber?: string;
-  accountReference?: string;
+  // BANK-only: backend requires bank_code + phone_number alongside account_number
+  bankCode?: string;
+  bankPhoneNumber?: string;
 };
 
 export type AmountDetails = {
   sourceWalletAddress: string;
-  sendAmount: number;
-  sendCurrency: string;
-  receiveAmount: number;
+  tokenAddress: string;
+  tokenSymbol: string;
+  network: string;
+  refundAddress: string;
+  fiatAmount: number;
   receiveCurrency: string;
-  fee: number;
-  fxRate: number;
+  receiveCountry: string;
 };
 
 export type PaymentResult = {
-  transactionId: string;
+  order: OrderCreateOut;
   processingMs: number;
   completedAt: number;
 };
@@ -51,13 +57,12 @@ export type PaymentError = {
 
 type SendPaymentState = {
   phase: SendPaymentPhase;
-  processingStage: ProcessingStage;
   recipient: RecipientDetails | null;
   amount: AmountDetails | null;
   reference: string;
-  pinError: string | null;
-  pinAttempts: number;
-  pendingOrderId: string | null;
+  quote: QuoteOrderOut | null;
+  quoteLoading: boolean;
+  quoteError: NormalizedQuoteError | null;
   result: PaymentResult | null;
   error: PaymentError | null;
 };
@@ -67,10 +72,9 @@ type SendPaymentActions = {
   setRecipient: (recipient: RecipientDetails) => void;
   setAmount: (amount: AmountDetails) => void;
   setReference: (reference: string) => void;
-  setPinError: (message: string | null) => void;
-  incrementPinAttempts: () => void;
-  setPendingOrderId: (id: string | null) => void;
-  setProcessingStage: (stage: ProcessingStage) => void;
+  setQuote: (quote: QuoteOrderOut | null) => void;
+  setQuoteLoading: (loading: boolean) => void;
+  setQuoteError: (err: NormalizedQuoteError | null) => void;
   setResult: (result: PaymentResult) => void;
   setError: (error: PaymentError) => void;
   reset: () => void;
@@ -81,13 +85,12 @@ export type SendPaymentStore = SendPaymentState & SendPaymentActions;
 
 const initialState: SendPaymentState = {
   phase: "recipient-details",
-  processingStage: "validating",
   recipient: null,
   amount: null,
   reference: "",
-  pinError: null,
-  pinAttempts: 0,
-  pendingOrderId: null,
+  quote: null,
+  quoteLoading: false,
+  quoteError: null,
   result: null,
   error: null,
 };
@@ -97,35 +100,20 @@ export const useSendPaymentStore = create<SendPaymentStore>()((set) => ({
 
   setPhase: (phase) => set({ phase }),
   setRecipient: (recipient) => set({ recipient }),
-  setAmount: (amount) => set({ amount }),
+  setAmount: (amount) => set({ amount, quote: null }),
   setReference: (reference) => set({ reference }),
-  setPinError: (pinError) => set({ pinError }),
-  incrementPinAttempts: () => set((s) => ({ pinAttempts: s.pinAttempts + 1 })),
-  setPendingOrderId: (pendingOrderId) => set({ pendingOrderId }),
-  setProcessingStage: (processingStage) => set({ processingStage }),
+  setQuote: (quote) => set({ quote }),
+  setQuoteLoading: (quoteLoading) => set({ quoteLoading }),
+  setQuoteError: (quoteError) => set({ quoteError }),
   setResult: (result) => set({ result, phase: "success" }),
   setError: (error) => set({ error, phase: "error" }),
 
   reset: () => set({ ...initialState }),
-  resetForNewPayment: () =>
-    set({
-      ...initialState,
-      // keep recipient so "Send another payment" doesn't wipe the selected recipient
-    }),
+  resetForNewPayment: () => set({ ...initialState }),
 }));
 
 export function phaseToStep(phase: SendPaymentPhase): 1 | 2 | 3 {
   if (phase === "recipient-details") return 1;
   if (phase === "payment-amount") return 2;
   return 3;
-}
-
-export function SavedRecipientToDetails(r: SavedRecipient): RecipientDetails {
-  return {
-    email: r.email,
-    country: r.country,
-    paymentMethod: r.paymentMethod,
-    name: r.name,
-    phoneNumber: r.phoneNumber,
-  };
 }

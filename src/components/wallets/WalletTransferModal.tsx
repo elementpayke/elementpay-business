@@ -1,17 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
-import { ArrowDown, ExternalLink, Loader2, X } from "lucide-react";
-import { erc20Abi, isAddress, parseUnits } from "viem";
-import { base } from "wagmi/chains";
-import { useSwitchChain, useWriteContract } from "wagmi";
+import { ArrowDown, Loader2, X } from "lucide-react";
 import { useCurrency } from "@/lib/currency/CurrencyContext";
 import { SUPPORTED_TOKENS } from "@/lib/wallets/supportedTokens";
 import { shortAddress } from "@/lib/wallets/wallet-selection";
 import type { LiveWallet } from "@/lib/wallets/types";
 
 const USDC_BASE = SUPPORTED_TOKENS.find((t) => t.symbol === "USDC" && t.chain === "Base")!;
+
+const EVM_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
+const isEvmAddress = (value: string) => EVM_ADDRESS_RE.test(value);
 
 type WalletTransferModalProps = {
   open: boolean;
@@ -24,7 +23,7 @@ type WalletTransferModalProps = {
 type TxState =
   | { kind: "idle" }
   | { kind: "submitting" }
-  | { kind: "success"; hash: `0x${string}` }
+  | { kind: "pending"; message: string }
   | { kind: "error"; message: string };
 
 export default function WalletTransferModal(props: WalletTransferModalProps) {
@@ -42,15 +41,12 @@ function WalletTransferModalBody({
   const [amount, setAmount] = useState("");
   const [tx, setTx] = useState<TxState>({ kind: "idle" });
 
-  const { writeContractAsync } = useWriteContract();
-  const { switchChainAsync } = useSwitchChain();
-
   const otherOwned = useMemo(
     () => ownedWallets.filter((w) => w.address !== source.address),
     [ownedWallets, source],
   );
 
-  const recipientValid = recipient !== "" && isAddress(recipient);
+  const recipientValid = recipient !== "" && isEvmAddress(recipient);
   const amountNumber = Number(amount);
   const amountValid = Number.isFinite(amountNumber) && amountNumber > 0;
   const overBalance = amountNumber > source.balance.amount;
@@ -63,24 +59,12 @@ function WalletTransferModalBody({
     if (submitDisabled) return;
 
     setTx({ kind: "submitting" });
-    try {
-      if (source.chainId !== base.id) {
-        await switchChainAsync({ chainId: base.id });
-      }
-      const value = parseUnits(amount, USDC_BASE.decimals);
-      const hash = await writeContractAsync({
-        abi: erc20Abi,
-        address: USDC_BASE.tokenAddress,
-        functionName: "transfer",
-        args: [recipient as `0x${string}`, value],
-        chainId: base.id,
-        account: source.address,
-      });
-      setTx({ kind: "success", hash });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Transfer failed";
-      setTx({ kind: "error", message });
-    }
+    // TODO: call backend transfer endpoint (api.elementpay.net) once available.
+    setTx({
+      kind: "pending",
+      message:
+        "Transfers are now routed through the ElementPay backend. The endpoint isn't wired up yet — your request hasn't been sent.",
+    });
   }
 
   return (
@@ -88,9 +72,9 @@ function WalletTransferModalBody({
       <div className="w-full max-w-md rounded-2xl border border-[#ECEEF5] bg-white p-6 shadow-[0_24px_60px_rgba(16,24,40,0.18)]">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-base font-semibold text-[#1A2138]">Send USDC</h3>
+            <h3 className="text-base font-semibold text-[#1A2138]">Send {USDC_BASE.symbol}</h3>
             <p className="mt-1 text-sm text-[#7E8498]">
-              Transfer USDC on Base from one of your wallets.
+              Transfer from your ElementPay wallet.
             </p>
           </div>
           <button
@@ -112,9 +96,9 @@ function WalletTransferModalBody({
             </div>
             <div className="text-right">
               <p className="text-sm font-semibold text-[#1A2138]">
-                {source.balance.formatted} <span className="text-[#5F667D]">USDC</span>
+                {source.balance.formatted} <span className="text-[#5F667D]">{USDC_BASE.symbol}</span>
               </p>
-              <p className="text-[11px] text-[#8E93A7]">on Base</p>
+              <p className="text-[11px] text-[#8E93A7]">on {USDC_BASE.chain}</p>
             </div>
           </div>
         </div>
@@ -166,7 +150,7 @@ function WalletTransferModalBody({
           ) : null}
 
           <label className="block text-sm">
-            <span className="text-xs font-medium text-[#4D556D]">Amount (USDC)</span>
+            <span className="text-xs font-medium text-[#4D556D]">Amount ({USDC_BASE.symbol})</span>
             <div className="relative mt-1">
               <input
                 type="number"
@@ -187,7 +171,7 @@ function WalletTransferModalBody({
             </div>
             <div className="mt-1 flex items-center justify-between text-[11px] text-[#8E93A7]">
               <span>{formatMoneyFromUsd(amountValid ? amountNumber : 0)}</span>
-              <span>Available: {source.balance.formatted} USDC</span>
+              <span>Available: {source.balance.formatted} {USDC_BASE.symbol}</span>
             </div>
             {overBalance ? (
               <p className="mt-1 text-xs text-[#E35D5B]">Amount exceeds wallet balance.</p>
@@ -200,17 +184,10 @@ function WalletTransferModalBody({
             </p>
           ) : null}
 
-          {tx.kind === "success" ? (
-            <a
-              href={`${USDC_BASE.explorerUrl}/tx/${tx.hash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-tertiary-200 bg-tertiary-50 px-3 py-2 text-xs font-medium text-tertiary-700 transition hover:border-tertiary-300"
-            >
-              <Image src="/Base_Symbol_Blue.svg" alt="Base" width={12} height={12} />
-              Sent · view on BaseScan
-              <ExternalLink className="h-3 w-3" />
-            </a>
+          {tx.kind === "pending" ? (
+            <p className="rounded-lg border border-[#F3D9A3] bg-[#FFF8E8] px-3 py-2 text-xs text-[#7A5A1A]">
+              {tx.message}
+            </p>
           ) : null}
 
           <div className="mt-2 flex gap-3">
@@ -219,7 +196,7 @@ function WalletTransferModalBody({
               onClick={onClose}
               className="h-11 flex-1 rounded-lg border border-[#E1E4EE] text-sm font-semibold text-[#303854] transition hover:border-[#CBD2E5]"
             >
-              {tx.kind === "success" ? "Close" : "Cancel"}
+              Cancel
             </button>
             <button
               type="submit"
@@ -231,7 +208,7 @@ function WalletTransferModalBody({
                   <Loader2 className="h-4 w-4 animate-spin" /> Sending...
                 </>
               ) : (
-                "Send USDC"
+                `Send ${USDC_BASE.symbol}`
               )}
             </button>
           </div>

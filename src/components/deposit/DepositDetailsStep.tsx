@@ -1,233 +1,185 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Flag from "@/components/dashboard/Flag";
-import { validateKenyanPhoneNumber } from "@/lib/phoneValidation";
+import { AlertTriangle, Loader2, Wallet2 } from "lucide-react";
 import { useCurrency } from "@/lib/currency/CurrencyContext";
 import { useSelectedWallet } from "@/lib/wallets/useSelectedWallet";
-import { useLiveWallets } from "@/lib/wallets/useLiveWallets";
 import { tokensForWallet } from "@/lib/wallets/supportedTokens";
-import { fetchOrderQuote } from "@/lib/aggregator";
-import type { LiveWallet } from "@/lib/wallets/types";
-import { useDepositStore, type DepositCurrency } from "@/stores/depositStore";
+import { shortAddress } from "@/lib/wallets/wallet-selection";
+import { useExchangeRates } from "@/lib/dashboard/hooks";
+import {
+  useCatalogDirection,
+  type CatalogCountryOption,
+} from "@/lib/catalog/useCatalog";
+import {
+  useDepositStore,
+  type DepositPaymentMethod,
+  type DepositProvider,
+} from "@/stores/depositStore";
 import DepositDropdown from "./DepositDropdown";
 import PaymentMethodSelector from "./PaymentMethodSelector";
-import { isBankTransferValid } from "./BankTransferForm";
-
-type FlagCode = "KE" | "NG" | "GH" | "US";
-
-type CurrencyOption = {
-  code: Exclude<DepositCurrency, null>;
-  name: string;
-  flag: FlagCode;
-};
-
-const CURRENCY_OPTIONS: CurrencyOption[] = [
-  { code: "KES", name: "Kenyan Shillings", flag: "KE" },
-  { code: "NGN", name: "Nigerian Naira", flag: "NG" },
-  { code: "GHS", name: "Ghanaian Cedis", flag: "GH" },
-  { code: "USD", name: "US Dollar", flag: "US" },
-];
 
 export default function DepositDetailsStep() {
-  const { wallets } = useLiveWallets();
   const { selectedWallet } = useSelectedWallet();
-  const { formatMoney, usdKesRate } = useCurrency();
+  const { formatMoney } = useCurrency();
+
+  // Deposit = fund crypto with fiat = on-ramp corridor.
+  const { countries, getMethods, isLoading: catalogLoading, error: catalogError } =
+    useCatalogDirection("onramp");
+  const { data: rates } = useExchangeRates();
 
   const store = useDepositStore();
   const {
     selectedWalletAddress,
-    selectedTokenAddress,
     selectedCurrency,
+    selectedCountry,
     amountFiat,
     paymentMethod,
+    selectedProvider,
     phoneNumber,
-    savePhone,
-    cardDetails,
+    accountName,
     setWallet,
     setCurrency,
     setAmount,
     setPaymentMethod,
+    setProvider,
     setPhoneNumber,
-    setSavePhone,
-    updateCardDetails,
+    setAccountName,
     setPhase,
   } = store;
 
   const [amountInput, setAmountInput] = useState<string>(
     amountFiat > 0 ? String(amountFiat) : "",
   );
-  const [usdEquivalent, setUsdEquivalent] = useState<number | null>(null);
 
   const hiddenAmountRef = useRef<HTMLInputElement | null>(null);
 
-  // Seed wallet from the globally-selected wallet once.
+  // Users have exactly one wallet — auto-bind it as the funding source.
   useEffect(() => {
     if (selectedWalletAddress) return;
     if (!selectedWallet) return;
     const token = tokensForWallet(selectedWallet.kind === "embedded")[0];
     if (!token) return;
-    setWallet(selectedWallet.address, selectedWallet.label, token.tokenAddress);
+    setWallet(selectedWallet.address, selectedWallet.label, token.tokenAddress, token.chain);
   }, [selectedWallet, selectedWalletAddress, setWallet]);
 
-  const handleWalletPick = (wallet: LiveWallet) => {
-    const token = tokensForWallet(wallet.kind === "embedded")[0];
-    if (!token) return;
-    setWallet(wallet.address, wallet.label, token.tokenAddress);
+  const handleCountryPick = (option: CatalogCountryOption) => {
+    setCurrency(option.currency, option.code);
   };
 
-  const handleCurrencyPick = (option: CurrencyOption) => {
-    setCurrency(option.code);
+  const handleSelectProvider = (
+    method: Exclude<DepositPaymentMethod, null>,
+    provider: DepositProvider,
+  ) => {
+    if (paymentMethod !== method) setPaymentMethod(method);
+    setProvider(provider);
   };
 
-  const selectedCurrencyOption = useMemo(
-    () => CURRENCY_OPTIONS.find((c) => c.code === selectedCurrency) ?? null,
-    [selectedCurrency],
+  const selectedCountryOption = useMemo(
+    () => countries.find((c) => c.code === selectedCountry) ?? null,
+    [countries, selectedCountry],
   );
 
-  const selectedWalletOption = useMemo(
-    () => wallets.find((w) => w.address.toLowerCase() === selectedWalletAddress?.toLowerCase()) ?? null,
-    [wallets, selectedWalletAddress],
+  const methods = useMemo(
+    () => getMethods(selectedCountry),
+    [getMethods, selectedCountry],
   );
 
-  const canRequestQuote = Boolean(
-    selectedCurrency &&
-      selectedWalletAddress &&
-      selectedTokenAddress &&
-      Number.isFinite(amountFiat) &&
-      amountFiat > 0,
-  );
-
-  // Debounced quote fetch → USD equivalent
-  useEffect(() => {
-    if (!canRequestQuote || !selectedCurrency || !selectedWalletAddress || !selectedTokenAddress) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const handle = setTimeout(async () => {
-      try {
-        const quote = await fetchOrderQuote({
-          amountFiat,
-          tokenAddress: selectedTokenAddress,
-          walletAddress: selectedWalletAddress,
-          orderType: 0,
-          currency: selectedCurrency,
-        });
-        if (cancelled) return;
-        // Assume token is a USD stablecoin → required_token_amount ≈ USD value.
-        setUsdEquivalent(quote.data.required_token_amount);
-      } catch {
-        if (cancelled) return;
-        if (selectedCurrency === "KES" && usdKesRate > 0) {
-          setUsdEquivalent(amountFiat / usdKesRate);
-        } else if (selectedCurrency === "USD") {
-          setUsdEquivalent(amountFiat);
-        } else {
-          setUsdEquivalent(null);
-        }
-      }
-    }, 400);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [amountFiat, canRequestQuote, selectedCurrency, selectedWalletAddress, selectedTokenAddress, usdKesRate]);
-
-  const displayedUsdEquivalent = canRequestQuote ? usdEquivalent : null;
+  // Indicative rate (USD→local) from the shared FX feed. Binding rate is the
+  // quote on the next step; this is just to set expectations on selection.
+  const indicativeRate = useMemo(() => {
+    if (!rates || !selectedCurrency) return null;
+    const r = rates.rates?.[selectedCurrency];
+    return typeof r === "number" && Number.isFinite(r) ? r : null;
+  }, [rates, selectedCurrency]);
 
   const paymentMethodSectionVisible = Boolean(
-    selectedWalletAddress && selectedCurrency && amountFiat > 0,
+    selectedWalletAddress && selectedCurrency && amountFiat > 0 && methods.length > 0,
   );
 
   const isMethodValid = (() => {
-    if (!paymentMethod) return false;
-    if (paymentMethod === "mpesa-mobile") {
-      return validateKenyanPhoneNumber(`254${phoneNumber}`).isValid;
+    if (!paymentMethod || !selectedProvider) return false;
+    if (paymentMethod === "momo") {
+      return phoneNumber.trim().length > 0 && accountName.trim().length > 0;
     }
-    if (paymentMethod === "mpesa-paybill") return true;
-    if (paymentMethod === "bank-transfer") return isBankTransferValid(cardDetails);
-    return false;
+    // bank: the user pushes money to our receiving account — picking the
+    // receiving bank (provider) is all we need to capture here.
+    return true;
   })();
 
   const canSubmit = Boolean(
     selectedWalletAddress && selectedCurrency && amountFiat > 0 && isMethodValid,
   );
 
-  const fxRateLine = (() => {
-    if (!selectedCurrency) return null;
-    if (selectedCurrency === "KES") {
-      return `1 US Dollar = ${usdKesRate.toFixed(2)} Kenyan Shillings`;
-    }
-    if (selectedCurrency === "USD") {
-      return "Deposits in USD are credited 1:1 to your wallet";
-    }
-    return "Live FX rate provided on confirmation";
-  })();
-
   return (
     <div className="space-y-4">
       <div className="space-y-5 rounded-xl border border-[#ECEEF5] bg-white p-6">
-        {/* Wallet dropdown */}
-        <DepositDropdown<LiveWallet>
-          label="What wallet would you like to fund?"
-          placeholder="Select a wallet"
-          selected={selectedWalletOption}
-          options={wallets}
-          onSelect={handleWalletPick}
-          getOptionKey={(w) => w.address}
-          renderTriggerValue={(w) => (
-            <span className="flex w-full items-center justify-between">
-              <span className="text-sm font-semibold text-[#1A2138]">{w.label}</span>
-              <span className="text-xs text-[#7E8498]">
-                {formatMoney(w.balance.usd, "USD")}
+        {/* Single-wallet funding source — read-only. */}
+        <div>
+          <p className="mb-1.5 block text-sm font-medium text-[#4D556D]">
+            Funding wallet
+          </p>
+          <div className="flex items-center gap-3 rounded-xl border border-[#ECEEF5] bg-[#FAFBFE] px-4 py-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+              <Wallet2 className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-[#1A2138]">
+                {selectedWallet?.label ?? "ElementPay Wallet"}
+              </span>
+              <span className="block text-[11px] text-[#9298AC]">
+                {selectedWallet ? shortAddress(selectedWallet.address) : "Provisioning…"}
               </span>
             </span>
-          )}
-          renderOption={(w) => (
-            <span className="flex w-full items-center justify-between">
-              <span className="text-sm font-semibold text-[#1A2138]">{w.label}</span>
-              <span className="text-xs text-[#7E8498]">
-                {formatMoney(w.balance.usd, "USD")}
+            {selectedWallet ? (
+              <span className="text-xs font-medium text-[#7E8498]">
+                {formatMoney(selectedWallet.balance.usd, "USD")}
               </span>
-            </span>
-          )}
-        />
-
-        {/* Currency dropdown */}
-        <div className="space-y-1">
-          <DepositDropdown<CurrencyOption>
-            label="What currency do you want to fund your wallet with?"
-            placeholder="Select a currency"
-            selected={selectedCurrencyOption}
-            options={CURRENCY_OPTIONS}
-            onSelect={handleCurrencyPick}
-            getOptionKey={(o) => o.code}
-            renderTriggerValue={(o) => (
-              <span className="flex items-center gap-2.5">
-                <Flag code={o.flag} size={20} />
-                <span className="text-sm font-medium text-[#1A2138]">{o.name}</span>
-                <span className="text-xs text-[#7E8498]">({o.code})</span>
-              </span>
-            )}
-            renderOption={(o) => (
-              <span className="flex w-full items-center justify-between">
-                <span className="flex items-center gap-2.5">
-                  <Flag code={o.flag} size={22} />
-                  <span className="text-sm font-medium text-[#1A2138]">{o.name}</span>
-                </span>
-                <span className="text-xs font-semibold text-[#7E8498]">{o.code}</span>
-              </span>
-            )}
-          />
-          {fxRateLine ? (
-            <p className="mt-2 text-sm font-medium text-primary-500">{fxRateLine}</p>
-          ) : null}
+            ) : null}
+          </div>
         </div>
 
-        {/* Amount */}
+        <div className="space-y-1">
+          {catalogError ? (
+            <div className="flex items-center gap-2 rounded-xl border border-[#F5B5B3] bg-[#FFF4F3] px-4 py-3 text-xs text-[#A1352F]">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              Couldn&apos;t load supported countries. Refresh and try again.
+            </div>
+          ) : (
+            <DepositDropdown<CatalogCountryOption>
+              label="What currency do you want to fund your wallet with?"
+              placeholder={catalogLoading ? "Loading countries…" : "Select a country"}
+              disabled={catalogLoading || countries.length === 0}
+              selected={selectedCountryOption}
+              options={countries}
+              onSelect={handleCountryPick}
+              getOptionKey={(o) => o.code}
+              renderTriggerValue={(o) => (
+                <span className="flex items-center gap-2.5">
+                  <span className="text-lg leading-none">{o.flag}</span>
+                  <span className="text-sm font-medium text-[#1A2138]">{o.name}</span>
+                  <span className="text-xs text-[#7E8498]">({o.currency})</span>
+                </span>
+              )}
+              renderOption={(o) => (
+                <span className="flex w-full items-center justify-between">
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-lg leading-none">{o.flag}</span>
+                    <span className="text-sm font-medium text-[#1A2138]">{o.name}</span>
+                  </span>
+                  <span className="text-xs font-semibold text-[#7E8498]">{o.currency}</span>
+                </span>
+              )}
+            />
+          )}
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-[#7E8498]">
+            {catalogLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+            {indicativeRate
+              ? `Indicative rate: 1 USD ≈ ${indicativeRate.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${selectedCurrency}. Binding rate is shown on the confirmation step.`
+              : "Live FX rate and fees are provided on the confirmation step."}
+          </p>
+        </div>
+
         <div>
           <label className="mb-1.5 block text-sm font-medium text-[#4D556D]">
             How much would you like to deposit?
@@ -261,27 +213,19 @@ export default function DepositDetailsStep() {
               className="h-0 w-0 opacity-0"
               aria-label="Deposit amount"
             />
-            <p className="mt-2 text-sm text-[#9CA3B6]">
-              {displayedUsdEquivalent !== null
-                ? `USD ${displayedUsdEquivalent.toFixed(2)}`
-                : amountFiat > 0
-                  ? "USD —"
-                  : "USD 0.00"}
-            </p>
           </div>
         </div>
 
         {paymentMethodSectionVisible && selectedCurrency ? (
           <PaymentMethodSelector
-            currency={selectedCurrency}
-            selected={paymentMethod}
-            onSelect={setPaymentMethod}
+            methods={methods}
+            selectedMethod={paymentMethod}
+            selectedProvider={selectedProvider}
+            onSelectProvider={handleSelectProvider}
             phoneNumber={phoneNumber}
             onPhoneChange={setPhoneNumber}
-            savePhone={savePhone}
-            onSavePhoneChange={setSavePhone}
-            cardDetails={cardDetails}
-            onCardDetailsChange={updateCardDetails}
+            accountName={accountName}
+            onAccountNameChange={setAccountName}
           />
         ) : null}
 
@@ -291,7 +235,7 @@ export default function DepositDetailsStep() {
           onClick={() => setPhase("confirm-deposit")}
           className="inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary-500 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          Confirm deposit
+          Continue to review
         </button>
       </div>
     </div>

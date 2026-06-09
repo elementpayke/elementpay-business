@@ -48,7 +48,10 @@ export default function ErrorStep() {
         {error?.retryable !== false ? (
           <button
             type="button"
-            onClick={() => setPhase("payment-review")}
+            onClick={() => {
+              reset();
+              setPhase("payment-amount");
+            }}
             className="h-12 flex-1 rounded-xl bg-primary-500 text-sm font-semibold text-white transition hover:brightness-105"
           >
             Retry

@@ -19,6 +19,28 @@ export interface Token {
   access_token: string;
   refresh_token: string;
   token_type: string;
+  wallet_address?: string | null;
+}
+
+const WALLET_ADDRESS_KEY = "wallet_address";
+
+function persistWalletAddress(address: string | null | undefined) {
+  if (typeof window === "undefined") return;
+  // The wallet address is only issued by the login response. Endpoints like
+  // /me and /refresh omit the field entirely (undefined), which must mean
+  // "leave the stored value untouched" — NOT "clear it". Only an explicit
+  // null (logout) removes it.
+  if (address === undefined) return;
+  if (address) {
+    localStorage.setItem(WALLET_ADDRESS_KEY, address);
+  } else {
+    localStorage.removeItem(WALLET_ADDRESS_KEY);
+  }
+}
+
+export function getStoredWalletAddress(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(WALLET_ADDRESS_KEY);
 }
 
 export interface SignupBusinessResult {
@@ -69,6 +91,7 @@ export interface MeResponse {
   business: MeBusiness | null;
   role: string | null;
   kyb_summary: MeKybSummary | null;
+  wallet_address: string | null;
 }
 
 interface ApiResponse<T> {
@@ -163,6 +186,7 @@ export async function login(data: LoginSchema): Promise<Token> {
   if (typeof window !== "undefined") {
     localStorage.setItem("access_token", result.access_token);
     localStorage.setItem("refresh_token", result.refresh_token);
+    persistWalletAddress(result.wallet_address);
   }
   return result;
 }
@@ -220,7 +244,13 @@ export async function resendVerification(email: string): Promise<{ ok: boolean }
 
 export async function getMe(): Promise<MeResponse> {
   const res = await authedFetch(`${API_BASE}/api/auth/me`, { method: "GET" });
-  return handleResponse<MeResponse>(res);
+  const me = await handleResponse<MeResponse>(res);
+  if (typeof window !== "undefined") {
+    // Pass the raw value: undefined (field absent) leaves the stored login
+    // address intact; an explicit null would clear it.
+    persistWalletAddress(me.wallet_address);
+  }
+  return me;
 }
 
 export async function refreshToken(): Promise<Token> {
@@ -235,6 +265,9 @@ export async function refreshToken(): Promise<Token> {
   if (typeof window !== "undefined") {
     localStorage.setItem("access_token", result.access_token);
     localStorage.setItem("refresh_token", result.refresh_token);
+    if (result.wallet_address !== undefined) {
+      persistWalletAddress(result.wallet_address);
+    }
   }
   return result;
 }
@@ -243,6 +276,7 @@ export function logout() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    persistWalletAddress(null);
   }
 }
 

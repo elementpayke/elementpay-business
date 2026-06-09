@@ -116,3 +116,33 @@ html {
 .deposit-loading-bar {
   animation: deposit-loading 1.8s ease-in-out infinite;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #invoice-printable,
+  #invoice-printable * {
+    visibility: visible;
+  }
+
+  #invoice-printable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 24px;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}

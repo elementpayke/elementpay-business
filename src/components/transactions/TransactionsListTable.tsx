@@ -8,10 +8,8 @@ import {
   UserAvatar,
   mergeClasses,
 } from "@/components/dashboard/DashboardPrimitives";
-import type {
-  CountryCode,
-  RecentTransactionRow,
-} from "@/components/dashboard/dashboardData";
+import type { CountryCode } from "@/components/dashboard/dashboardData";
+import type { TransactionViewRow } from "@/lib/dashboard/transactionView";
 
 function DirectionAvatar({
   name,
@@ -19,28 +17,34 @@ function DirectionAvatar({
   direction,
 }: {
   name: string;
-  country: CountryCode;
-  direction: "in" | "out";
+  country: CountryCode | null;
+  direction: "in" | "out" | "unknown";
 }) {
   return (
     <div className="relative">
       <UserAvatar name={name} />
-      <span className="absolute -bottom-0.5 -right-0.5 rounded-full ring-2 ring-white">
-        <Flag code={country} size={12} />
-      </span>
-      <span
-        className={mergeClasses(
-          "absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-white",
-          direction === "in" ? "bg-[#E8F8EF] text-[#1E9F72]" : "bg-[#FFEFEF] text-[#D95252]",
-        )}
-        aria-hidden
-      >
-        {direction === "in" ? (
-          <ArrowDownLeft className="h-2.5 w-2.5" strokeWidth={3} />
-        ) : (
-          <ArrowUpRight className="h-2.5 w-2.5" strokeWidth={3} />
-        )}
-      </span>
+      {country ? (
+        <span className="absolute -bottom-0.5 -right-0.5 rounded-full ring-2 ring-white">
+          <Flag code={country} size={12} />
+        </span>
+      ) : null}
+      {direction !== "unknown" ? (
+        <span
+          className={mergeClasses(
+            "absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-white",
+            direction === "in"
+              ? "bg-[#E8F8EF] text-[#1E9F72]"
+              : "bg-[#FFEFEF] text-[#D95252]",
+          )}
+          aria-hidden
+        >
+          {direction === "in" ? (
+            <ArrowDownLeft className="h-2.5 w-2.5" strokeWidth={3} />
+          ) : (
+            <ArrowUpRight className="h-2.5 w-2.5" strokeWidth={3} />
+          )}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -48,7 +52,7 @@ function DirectionAvatar({
 export default function TransactionsListTable({
   rows,
 }: {
-  rows: RecentTransactionRow[];
+  rows: TransactionViewRow[];
 }) {
   const router = useRouter();
 
@@ -65,7 +69,7 @@ export default function TransactionsListTable({
       <table className="w-full min-w-[960px] text-sm">
         <thead>
           <tr className="text-left text-[11px] font-medium text-[#9298AC]">
-            <th className="pb-3 pr-4 font-medium">Client name</th>
+            <th className="pb-3 pr-4 font-medium">Reference</th>
             <th className="pb-3 pr-4 font-medium">Txn type</th>
             <th className="pb-3 pr-4 font-medium">Payment method</th>
             <th className="pb-3 pr-4 font-medium">Txn status</th>
@@ -83,12 +87,14 @@ export default function TransactionsListTable({
               <td className="py-3.5 pr-4">
                 <div className="flex items-center gap-2.5">
                   <DirectionAvatar
-                    name={t.client}
+                    name={t.clientName}
                     country={t.country}
                     direction={t.direction}
                   />
                   <div>
-                    <p className="text-sm font-medium text-[#1F2640]">{t.client}</p>
+                    <p className="text-sm font-medium text-[#1F2640]">
+                      {t.clientName}
+                    </p>
                     <p className="mt-0.5 text-[11px] text-[#9298AC]">{t.date}</p>
                   </div>
                 </div>
@@ -102,7 +108,7 @@ export default function TransactionsListTable({
               <td
                 className={mergeClasses(
                   "py-3.5 font-medium",
-                  t.amount.startsWith("-") ? "text-[#1F2640]" : "text-[#1E9F72]",
+                  t.direction === "in" ? "text-[#1E9F72]" : "text-[#1F2640]",
                 )}
               >
                 {t.amount}

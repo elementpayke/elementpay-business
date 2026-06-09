@@ -1,51 +1,45 @@
 "use client";
 
-import { useState } from "react";
-import RecipientForm, { type RecipientFormValues } from "@/components/payments/RecipientForm";
-import RecipientList from "@/components/payments/RecipientList";
-import { SavedRecipientToDetails, useSendPaymentStore } from "@/stores/sendPaymentStore";
-import type { Country, SavedRecipient } from "@/components/payments/paymentData";
+import RecipientForm, {
+  type RecipientFormValues,
+  type RecipientSubmit,
+} from "@/components/payments/RecipientForm";
+import { useSendPaymentStore } from "@/stores/sendPaymentStore";
 
 export default function RecipientStep() {
   const storeRecipient = useSendPaymentStore((s) => s.recipient);
   const setRecipient = useSendPaymentStore((s) => s.setRecipient);
   const setPhase = useSendPaymentStore((s) => s.setPhase);
 
-  const [selectedRecipient, setSelectedRecipient] = useState<SavedRecipient | null>(null);
-
   const initial: Partial<RecipientFormValues> | undefined = storeRecipient
     ? {
         email: storeRecipient.email,
-        country: storeRecipient.country,
-        paymentMethod: storeRecipient.paymentMethod,
-        phoneNumber: storeRecipient.phoneNumber,
+        countryCode: storeRecipient.countryCode,
+        methodKey: storeRecipient.methodOptionKey,
+        accountNumber: storeRecipient.accountNumber,
+        accountName: storeRecipient.name ?? "",
+        bankCode: storeRecipient.bankCode ?? "",
+        bankPhoneNumber: storeRecipient.bankPhoneNumber ?? "",
       }
     : undefined;
 
-  function handleSubmit(values: RecipientFormValues) {
+  function handleSubmit(values: RecipientSubmit) {
+    const isMomo = values.methodKey === "momo";
     setRecipient({
       email: values.email,
-      country: values.country as Country,
-      paymentMethod: values.paymentMethod,
-      phoneNumber: values.phoneNumber,
-      name: selectedRecipient?.name ?? storeRecipient?.name,
+      country: values.countryName,
+      countryCode: values.countryCode,
+      receiveCurrency: values.receiveCurrency,
+      paymentMethod: values.methodLabel,
+      methodOptionKey: values.methodOptionKey,
+      accountType: isMomo ? "momo" : "bank",
+      accountNumber: values.accountNumber,
+      name: values.accountName,
+      bankCode: isMomo ? undefined : values.bankCode,
+      bankPhoneNumber: isMomo ? undefined : values.bankPhoneNumber,
     });
     setPhase("payment-amount");
   }
 
-  function handlePickSaved(recipient: SavedRecipient) {
-    setSelectedRecipient(recipient);
-    setRecipient(SavedRecipientToDetails(recipient));
-  }
-
-  return (
-    <>
-      <RecipientForm
-        initialValues={initial}
-        selectedRecipient={selectedRecipient}
-        onSubmit={handleSubmit}
-      />
-      <RecipientList onSelect={handlePickSaved} />
-    </>
-  );
+  return <RecipientForm initialValues={initial} onSubmit={handleSubmit} />;
 }

@@ -1,14 +1,22 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, Download, Search, SlidersHorizontal } from "lucide-react";
+import {
+  ChevronDown,
+  Download,
+  Loader2,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
 import TransactionsListTable from "@/components/transactions/TransactionsListTable";
 import PendingTransactionsTable from "@/components/transactions/PendingTransactionsTable";
+import EmptyState from "@/components/dashboard/EmptyState";
 import { mergeClasses } from "@/components/dashboard/DashboardPrimitives";
+import { useTransactions } from "@/lib/dashboard/hooks";
 import {
-  recentTransactions,
-  type RecentTransactionRow,
-} from "@/components/dashboard/dashboardData";
+  toTransactionRow,
+  type TransactionViewRow,
+} from "@/lib/dashboard/transactionView";
 
 type FilterId = "all" | "payins" | "payouts" | "successful" | "failed";
 
@@ -29,39 +37,26 @@ const SORT_OPTIONS: Array<{ id: SortId; label: string }> = [
   { id: "lowest", label: "Lowest amount" },
 ];
 
-function amountValue(raw: string) {
-  const num = Number(raw.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(num) ? num : 0;
-}
-
-function toCSV(rows: RecentTransactionRow[]) {
+function toCSV(rows: TransactionViewRow[]) {
   const header = [
     "id",
-    "client",
-    "country",
-    "date",
-    "direction",
-    "type",
-    "paymentMethod",
-    "status",
-    "fees",
-    "amount",
     "reference",
+    "currency",
+    "amount",
+    "direction",
+    "status",
+    "date",
   ];
   const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
   const body = rows.map((r) =>
     [
       r.id,
-      r.client,
-      r.country,
-      r.date,
-      r.direction,
-      r.type,
-      r.paymentMethod,
-      r.status,
-      r.fees,
-      r.amount,
       r.reference,
+      r.currency,
+      String(r.amountNumeric),
+      r.direction,
+      r.rawStatus,
+      r.date,
     ]
       .map((c) => esc(String(c)))
       .join(","),
@@ -120,24 +115,36 @@ function SortDropdown({
   );
 }
 
+function timeOf(row: TransactionViewRow): number {
+  return row.rawId; // monotonic per insertion; good proxy for "newest"
+}
+
 export default function TransactionsPage() {
   const [filter, setFilter] = useState<FilterId>("all");
   const [sort, setSort] = useState<SortId>("newest");
   const [query, setQuery] = useState("");
 
+  const { data, isLoading, isError } = useTransactions();
+
+  const allRows = useMemo(
+    () => (data?.items ?? []).map(toTransactionRow),
+    [data?.items],
+  );
+
   const filtered = useMemo(() => {
-    let rows = recentTransactions.slice();
+    let rows = allRows.slice();
 
     if (filter === "payins") rows = rows.filter((r) => r.direction === "in");
     else if (filter === "payouts") rows = rows.filter((r) => r.direction === "out");
-    else if (filter === "successful") rows = rows.filter((r) => r.status === "Successful");
+    else if (filter === "successful")
+      rows = rows.filter((r) => r.status === "Successful");
     else if (filter === "failed") rows = rows.filter((r) => r.status === "Failed");
 
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       rows = rows.filter(
         (r) =>
-          r.client.toLowerCase().includes(q) ||
+          r.clientName.toLowerCase().includes(q) ||
           r.reference.toLowerCase().includes(q) ||
           r.id.toLowerCase().includes(q) ||
           r.type.toLowerCase().includes(q),
@@ -145,15 +152,17 @@ export default function TransactionsPage() {
     }
 
     if (sort === "highest") {
-      rows.sort((a, b) => Math.abs(amountValue(b.amount)) - Math.abs(amountValue(a.amount)));
+      rows.sort((a, b) => Math.abs(b.amountNumeric) - Math.abs(a.amountNumeric));
     } else if (sort === "lowest") {
-      rows.sort((a, b) => Math.abs(amountValue(a.amount)) - Math.abs(amountValue(b.amount)));
+      rows.sort((a, b) => Math.abs(a.amountNumeric) - Math.abs(b.amountNumeric));
     } else if (sort === "oldest") {
-      rows.reverse();
+      rows.sort((a, b) => timeOf(a) - timeOf(b));
+    } else {
+      rows.sort((a, b) => timeOf(b) - timeOf(a));
     }
 
     return rows;
-  }, [filter, sort, query]);
+  }, [allRows, filter, sort, query]);
 
   function handleExport() {
     const csv = toCSV(filtered);
@@ -186,7 +195,7 @@ export default function TransactionsPage() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by client, ref, ID"
+              placeholder="Search by reference or ID"
               className="h-9 w-[260px] rounded-lg border border-[#E7EAF3] bg-white pl-8 pr-3 text-xs text-[#1F2640] outline-none transition placeholder:text-[#9CA3B6] focus:border-primary-300"
             />
           </label>
@@ -194,7 +203,8 @@ export default function TransactionsPage() {
           <button
             type="button"
             onClick={handleExport}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary-500 px-3.5 text-xs font-semibold text-white transition hover:brightness-105"
+            disabled={filtered.length === 0}
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary-500 px-3.5 text-xs font-semibold text-white transition hover:brightness-105 disabled:opacity-50"
           >
             <Download className="h-3.5 w-3.5" />
             Export CSV
@@ -204,7 +214,9 @@ export default function TransactionsPage() {
 
       <div className="rounded-2xl border border-[#ECEEF5] bg-white p-6 shadow-[0_4px_30px_rgba(16,24,40,0.04)]">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
-          <h2 className="text-sm font-semibold text-[#1C2238]">Transaction history</h2>
+          <h2 className="text-sm font-semibold text-[#1C2238]">
+            Transaction history
+          </h2>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -234,13 +246,27 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        <TransactionsListTable rows={filtered} />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-14 text-sm text-[#8D92A6]">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loading transactions…
+          </div>
+        ) : isError ? (
+          <EmptyState
+            title="Transactions unavailable"
+            description="We couldn't load your transactions right now. Please try again."
+          />
+        ) : (
+          <TransactionsListTable rows={filtered} />
+        )}
       </div>
 
       <div className="rounded-2xl border border-[#ECEEF5] bg-white p-6 shadow-[0_4px_30px_rgba(16,24,40,0.04)]">
         <div className="flex items-center justify-between pb-4">
           <div>
-            <h2 className="text-sm font-semibold text-[#1C2238]">Pending payments</h2>
+            <h2 className="text-sm font-semibold text-[#1C2238]">
+              Pending payments
+            </h2>
             <p className="mt-1 text-xs text-[#8D92A6]">
               Awaiting settlement or counterparty confirmation.
             </p>

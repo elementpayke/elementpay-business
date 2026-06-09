@@ -1,50 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowRight, ChevronDown, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import CountrySelect from "@/components/auth/CountrySelect";
+import DatePicker from "@/components/ui/DatePicker";
 import { COUNTRIES, type Country } from "@/lib/countries";
 import type { BasicInfoProfile } from "@/lib/onboarding/types";
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-] as const;
 
 const inputClass =
   "w-full h-12 px-4 rounded-xl border-0 bg-gray-100 dark:bg-gray-800/70 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/25 transition-all";
 
 const labelClass =
   "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
-
-function NativeSelect({
-  id,
-  value,
-  onChange,
-  children,
-  ariaLabel,
-}: {
-  id?: string;
-  value: string;
-  onChange: (v: string) => void;
-  children: React.ReactNode;
-  ariaLabel?: string;
-}) {
-  return (
-    <div className="relative">
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label={ariaLabel}
-        className={`${inputClass} appearance-none pr-10 ${value ? "" : "text-gray-400 dark:text-gray-500"}`}
-      >
-        {children}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-    </div>
-  );
-}
 
 interface BasicInfoStepProps {
   initial: BasicInfoProfile | null;
@@ -63,15 +30,11 @@ function findByCode(code: string): Country | null {
   return COUNTRIES.find((c) => c.code === code) ?? null;
 }
 
-// Re-hydrate the saved value. New drafts use ISO-2 (e.g. "KE"); older
-// drafts saved before this fix used the dial code (e.g. "+254").
 function findCountryByStoredCode(value: string): Country | null {
   if (!value) return null;
   return value.startsWith("+") ? findByDial(value) : findByCode(value);
 }
 
-// Kenya is our primary customer base — used as the default for nationality and
-// dial-code when the user has not previously made a choice.
 const DEFAULT_COUNTRY = findByCode("KE");
 
 export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps) {
@@ -84,19 +47,12 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
     initial?.countryCode ? findCountryByStoredCode(initial.countryCode) : DEFAULT_COUNTRY,
   );
   const [phoneNumber, setPhoneNumber] = useState(initial?.phoneNumber ?? "");
-  const [dobDay, setDobDay] = useState(initial?.dateOfBirth.day ?? "");
-  const [dobMonth, setDobMonth] = useState(initial?.dateOfBirth.month ?? "");
-  const [dobYear, setDobYear] = useState(initial?.dateOfBirth.year ?? "");
+  const [dob, setDob] = useState(initial?.dateOfBirth ?? "");
 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const years = useMemo(() => {
-    const current = new Date().getFullYear();
-    const out: number[] = [];
-    for (let y = current - 18; y >= current - 100; y--) out.push(y);
-    return out;
-  }, []);
+  const currentYear = new Date().getFullYear();
 
   const handleCountryChange = (c: Country) => {
     setCountry(c);
@@ -113,11 +69,6 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
     if (!dialCountry) return setError("Select a country code for your phone.");
     if (!phoneNumber.trim()) return setError("Phone number is required.");
 
-    const dobProvided = dobDay || dobMonth || dobYear;
-    if (dobProvided && !(dobDay && dobMonth && dobYear)) {
-      return setError("Please complete your date of birth or leave it empty.");
-    }
-
     const digits = phoneNumber.replace(/\D/g, "");
     const normalizedPhone = digits
       ? `${dialCountry.dialCode}${digits.replace(/^0+/, "")}`
@@ -129,7 +80,7 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
       country: country.name,
       countryCode: dialCountry.code,
       phoneNumber: normalizedPhone,
-      dateOfBirth: { day: dobDay, month: dobMonth, year: dobYear },
+      dateOfBirth: dob,
     };
 
     setSubmitting(true);
@@ -155,9 +106,7 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="firstName" className={labelClass}>
-            First Name
-          </label>
+          <label htmlFor="firstName" className={labelClass}>First Name</label>
           <input
             id="firstName"
             type="text"
@@ -170,9 +119,7 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
           />
         </div>
         <div>
-          <label htmlFor="lastName" className={labelClass}>
-            Last Name
-          </label>
+          <label htmlFor="lastName" className={labelClass}>Last Name</label>
           <input
             id="lastName"
             type="text"
@@ -187,9 +134,7 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
       </div>
 
       <div>
-        <label htmlFor="country" className={labelClass}>
-          Country of Residence
-        </label>
+        <label htmlFor="country" className={labelClass}>Country of Residence</label>
         <CountrySelect
           id="country"
           value={country?.code ?? null}
@@ -201,9 +146,7 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
       </div>
 
       <div>
-        <label htmlFor="phoneNumber" className={labelClass}>
-          Phone Number
-        </label>
+        <label htmlFor="phoneNumber" className={labelClass}>Phone Number</label>
         <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] gap-3">
           <CountrySelect
             value={dialCountry?.code ?? null}
@@ -231,42 +174,14 @@ export default function BasicInfoStep({ initial, onSubmit }: BasicInfoStepProps)
           Date of Birth{" "}
           <span className="font-normal text-gray-400 dark:text-gray-500">(Optional)</span>
         </label>
-        <div className="grid grid-cols-3 gap-3">
-          <NativeSelect id="dobDay" value={dobDay} onChange={setDobDay} ariaLabel="Day of birth">
-            <option value="">Day</option>
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-              <option key={d} value={String(d)}>
-                {d}
-              </option>
-            ))}
-          </NativeSelect>
-          <NativeSelect
-            id="dobMonth"
-            value={dobMonth}
-            onChange={setDobMonth}
-            ariaLabel="Month of birth"
-          >
-            <option value="">Month</option>
-            {MONTHS.map((m, idx) => (
-              <option key={m} value={String(idx + 1)}>
-                {m}
-              </option>
-            ))}
-          </NativeSelect>
-          <NativeSelect
-            id="dobYear"
-            value={dobYear}
-            onChange={setDobYear}
-            ariaLabel="Year of birth"
-          >
-            <option value="">Year</option>
-            {years.map((y) => (
-              <option key={y} value={String(y)}>
-                {y}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
+        <DatePicker
+          value={dob}
+          onChange={setDob}
+          placeholder="Pick a date"
+          ariaLabel="Date of birth"
+          minYear={currentYear - 100}
+          maxYear={currentYear - 18}
+        />
       </div>
 
       <button

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Wallet as WalletIcon } from "lucide-react";
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, RefreshCw, ShieldCheck, Wallet as WalletIcon } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCreateWallet, usePrivy } from "@privy-io/react-auth";
 import ConsolidatedBalanceCard from "@/components/wallets/ConsolidatedBalanceCard";
 import CopyToast from "@/components/wallets/CopyToast";
 import ReceiveModal from "@/components/wallets/ReceiveModal";
@@ -18,7 +18,6 @@ import {
 } from "@/components/wallets/WalletsSkeleton";
 import { useSelectedWallet } from "@/lib/wallets/useSelectedWallet";
 import { useCopyToClipboard } from "@/lib/wallets/useCopyToClipboard";
-import { devLog } from "@/lib/devlog";
 
 function NavButton({
   disabled = false,
@@ -41,56 +40,42 @@ function NavButton({
   );
 }
 
+function RetryWalletButton({
+  isRetrying,
+  onRetry,
+}: {
+  isRetrying: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={isRetrying}
+      onClick={onRetry}
+      className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      <RefreshCw className={`h-4 w-4 ${isRetrying ? "animate-spin" : ""}`} />
+      {isRetrying ? "Retrying" : "Retry"}
+    </button>
+  );
+}
+
 export default function WalletsPage() {
   const router = useRouter();
-  const { ready, authenticated, linkWallet } = usePrivy();
-  const { createWallet } = useCreateWallet();
-  const { wallets, selectedWallet, setSelectedWallet } = useSelectedWallet();
+  const {
+    wallets,
+    selectedWallet,
+    setSelectedWallet,
+    ready,
+    authenticated,
+    kybBlocked,
+    walletError,
+    retryWallet,
+    isWalletRetrying,
+  } = useSelectedWallet();
   const { copy, toast } = useCopyToClipboard();
   const [transferOpen, setTransferOpen] = useState(false);
   const [receiveOpen, setReceiveOpen] = useState(false);
-
-  const lastReadyRef = useRef(ready);
-  const lastAuthRef = useRef(authenticated);
-  const lastCountRef = useRef(wallets.length);
-
-  useEffect(() => {
-    if (!lastReadyRef.current && ready) {
-      devLog.info("privy", "Privy SDK ready");
-    }
-    if (!lastAuthRef.current && authenticated) {
-      devLog.success("privy", "Authenticated");
-    }
-    if (lastCountRef.current !== wallets.length) {
-      devLog.info("wallets", `Loaded ${wallets.length} wallet${wallets.length === 1 ? "" : "s"}`);
-    }
-    lastReadyRef.current = ready;
-    lastAuthRef.current = authenticated;
-    lastCountRef.current = wallets.length;
-  }, [ready, authenticated, wallets.length]);
-
-  useEffect(() => {
-    devLog.info("wallets", "Connecting to privy.io …");
-    return () => {
-      devLog.info("wallets", "Wallets view unmounted");
-    };
-  }, []);
-
-  function handleConnectWallet() {
-    devLog.info("wallets", "Linking external wallet …");
-    linkWallet();
-  }
-
-  async function handleCreateWallet() {
-    devLog.info("wallets", "Creating embedded wallet …");
-    try {
-      await createWallet();
-      devLog.success("wallets", "Embedded wallet created");
-    } catch (err) {
-      devLog.error("wallets", "createWallet failed");
-      console.error("[wallets] createWallet failed", err);
-    }
-  }
 
   function handleFundWallet(address: `0x${string}`) {
     setSelectedWallet(address);
@@ -102,8 +87,18 @@ export default function WalletsPage() {
     setTransferOpen(true);
   }
 
-  const privySyncing = !ready || !authenticated;
-  const showEmpty = ready && authenticated && wallets.length === 0;
+  const hasWallets = wallets.length > 0;
+  const syncing = !ready || !authenticated;
+  const showKybGate = ready && authenticated && kybBlocked;
+  // The wallet itself comes from the login response; only its balance depends
+  // on the dashboard summary. So a summary failure should NOT replace a
+  // present wallet with the error panel — show the wallet, surface the error
+  // only when there is nothing to display.
+  const showWallets = ready && authenticated && !kybBlocked && hasWallets;
+  const showWalletError =
+    ready && authenticated && !kybBlocked && !hasWallets && Boolean(walletError);
+  const showEmpty =
+    ready && authenticated && !kybBlocked && !hasWallets && !walletError;
 
   return (
     <section className="space-y-6">
@@ -123,12 +118,57 @@ export default function WalletsPage() {
 
       <WalletsFxStrip />
 
-      {privySyncing ? <ConsolidatedBalanceSkeleton /> : <ConsolidatedBalanceCard wallets={wallets} />}
+      {syncing || showKybGate ? (
+        <ConsolidatedBalanceSkeleton />
+      ) : (
+        <ConsolidatedBalanceCard
+          wallets={wallets}
+          balanceError={showWallets && Boolean(walletError)}
+          onRetryBalance={() => void retryWallet()}
+          isRetrying={isWalletRetrying}
+        />
+      )}
 
-      {privySyncing ? (
+      {syncing ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           <WalletListSkeleton />
           <WalletDetailsPanelSkeleton />
+        </div>
+      ) : null}
+
+      {showKybGate ? (
+        <div className="rounded-2xl border border-dashed border-[#D5D9E6] bg-white p-10 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100/60 text-primary-600">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <p className="mt-4 text-base font-semibold text-[#1A2138]">
+            Complete verification to unlock your wallet
+          </p>
+          <p className="mt-2 text-sm text-[#7E8498]">
+            Your ElementPay wallet activates as soon as your business KYB is approved.
+          </p>
+          <Link
+            href="/dashboard/verification"
+            className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-700"
+          >
+            Go to verification
+          </Link>
+        </div>
+      ) : null}
+
+      {showWalletError ? (
+        <div className="rounded-2xl border border-dashed border-[#D5D9E6] bg-white p-10 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100/60 text-primary-600">
+            <WalletIcon className="h-5 w-5" />
+          </div>
+          <p className="mt-4 text-base font-semibold text-[#1A2138]">Wallet temporarily unavailable</p>
+          <p className="mt-2 text-sm text-[#7E8498]">
+            We could not load your wallet details. Please try again.
+          </p>
+          <RetryWalletButton
+            isRetrying={isWalletRetrying}
+            onRetry={() => void retryWallet()}
+          />
         </div>
       ) : null}
 
@@ -137,35 +177,20 @@ export default function WalletsPage() {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100/60 text-primary-600">
             <WalletIcon className="h-5 w-5" />
           </div>
-          <p className="mt-4 text-base font-semibold text-[#1A2138]">No wallets connected yet</p>
+          <p className="mt-4 text-base font-semibold text-[#1A2138]">Your wallet isn&apos;t ready yet</p>
           <p className="mt-2 text-sm text-[#7E8498]">
-            Create a Privy embedded wallet or link an external wallet (MetaMask, Coinbase, etc.) to start receiving and sending payments.
+            We&apos;ll provision your ElementPay wallet automatically once your account is set up.
           </p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={handleConnectWallet}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-[#D5D9E6] bg-white px-5 text-sm font-semibold text-[#3F465E] transition hover:border-primary-300 hover:text-primary-700"
-            >
-              <WalletIcon className="h-4 w-4" />
-              Add wallet
-            </button>
-            <button
-              type="button"
-              onClick={handleCreateWallet}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-primary-500 px-5 text-sm font-semibold text-white transition hover:brightness-105"
-            >
-              Create new wallet
-            </button>
-          </div>
+          <RetryWalletButton
+            isRetrying={isWalletRetrying}
+            onRetry={() => void retryWallet()}
+          />
         </div>
       ) : null}
 
-      {ready && authenticated && wallets.length > 0 ? (
+      {showWallets ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
           <WalletList
-            onConnectWallet={handleConnectWallet}
-            onCreateWallet={handleCreateWallet}
             onFundWallet={handleFundWallet}
             onSendFromWallet={handleSendFromWallet}
             onReceiveToWallet={(address) => {

@@ -1,17 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { PrivyProvider } from "@privy-io/react-auth";
-import { WagmiProvider } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/lib/AuthContext";
 import { CurrencyProvider } from "@/lib/currency/CurrencyContext";
 import { OnboardingProvider } from "@/lib/onboarding/OnboardingContext";
-import { wagmiConfig } from "@/lib/wallets/wagmi-config";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -21,38 +17,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       }),
   );
 
-  const tree = (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <CurrencyProvider>
-        <AuthProvider>
-          <OnboardingProvider>{children}</OnboardingProvider>
-        </AuthProvider>
-      </CurrencyProvider>
-    </ThemeProvider>
-  );
-
-  if (!appId) {
-    return tree;
-  }
-
   return (
-    <PrivyProvider
-      appId={appId}
-      config={{
-        loginMethods: ["email", "wallet", "google", "apple"],
-        appearance: {
-          theme: "light",
-          accentColor: "#413ACB",
-          logo: "/coin.svg",
-        },
-        embeddedWallets: {
-          ethereum: { createOnLogin: "users-without-wallets" },
-        },
-      }}
-    >
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <QueryClientProvider client={queryClient}>
-        <WagmiProvider config={wagmiConfig}>{tree}</WagmiProvider>
+        <CurrencyProvider>
+          <AuthProvider>
+            <OnboardingProvider>{children}</OnboardingProvider>
+          </AuthProvider>
+        </CurrencyProvider>
       </QueryClientProvider>
-    </PrivyProvider>
+    </ThemeProvider>
   );
 }

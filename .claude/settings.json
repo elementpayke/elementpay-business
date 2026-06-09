@@ -9,7 +9,10 @@
       "PowerShell($body = '{\"email\":\"nelson+probe-2026-05-11@astralyngroup.com\",\"password\":\"D4Cheap1411!&\"}'; try { $r = Invoke-WebRequest -Uri \"https://dev-mboka-api.elementpay.net/api/auth/businesses/login\" -Method POST -ContentType \"application/json\" -Body $body -TimeoutSec 20 -UseBasicParsing; \"HTTP $\\($r.StatusCode\\)`n$\\($r.Content\\)\" } catch { $resp = $_.Exception.Response; if \\($resp\\) { $sr = New-Object System.IO.StreamReader\\($resp.GetResponseStream\\(\\)\\); \"HTTP $\\([int]$resp.StatusCode\\)`n$\\($sr.ReadToEnd\\(\\)\\)\" } else { \"ERROR: $\\($_.Exception.Message\\)\" } })",
       "PowerShell(\"--- proxy env vars ---\"; \"HTTP_PROXY=$env:HTTP_PROXY\"; \"HTTPS_PROXY=$env:HTTPS_PROXY\"; \"NO_PROXY=$env:NO_PROXY\"; \"http_proxy=$env:http_proxy\"; \"https_proxy=$env:https_proxy\"; \"NODE_EXTRA_CA_CERTS=$env:NODE_EXTRA_CA_CERTS\"; \"NODE_OPTIONS=$env:NODE_OPTIONS\")",
       "PowerShell(node -e \"const https=require\\('https'\\); const req=https.request\\({host:'dev-mboka-api.elementpay.net',port:443,path:'/api/auth/businesses/login',method:'POST',headers:{'content-type':'application/json'},family:4,timeout:10000},r=>{let b='';r.on\\('data',c=>b+=c\\);r.on\\('end',\\(\\)=>console.log\\('STATUS',r.statusCode,'BODY',b\\)\\)}\\); req.on\\('timeout',\\(\\)=>{console.log\\('TIMEOUT from Node'\\);req.destroy\\(\\)}\\); req.on\\('error',e=>console.log\\('ERROR',e.code,e.message\\)\\); req.write\\(JSON.stringify\\({email:'probe@x.com',password:'x'}\\)\\); req.end\\(\\);\")",
-      "PowerShell(npm install --save-dev cross-env)"
+      "PowerShell(npm install --save-dev cross-env)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/dashboard/invoices/create)",
+      "Bash(curl -s http://localhost:3000/dashboard/invoices/create)"
     ]
   }
 }

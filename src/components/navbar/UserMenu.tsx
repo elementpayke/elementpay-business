@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LogOut, Settings, Shield, User, Wallet } from "lucide-react";
+import { LogOut, Settings, Shield, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { usePrivy } from "@privy-io/react-auth";
 import { useAuth } from "@/lib/AuthContext";
 
 type UserMenuProps = {
@@ -31,13 +30,7 @@ export default function UserMenu({ children, email }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { logout } = useAuth();
-  const { linkWallet } = usePrivy();
   const containerRef = useRef<HTMLDivElement | null>(null);
-
-  function handleConnectWallet() {
-    setOpen(false);
-    linkWallet();
-  }
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -109,15 +102,6 @@ export default function UserMenu({ children, email }: UserMenuProps) {
                   {label}
                 </Link>
               ))}
-              <button
-                type="button"
-                role="menuitem"
-                onClick={handleConnectWallet}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#5F667D] transition hover:bg-[#F6F7FB] hover:text-[#222945]"
-              >
-                <Wallet className="h-4 w-4" />
-                Connect Wallet
-              </button>
             </div>
 
             <div className="border-t border-[#F0F2F7] pt-2">

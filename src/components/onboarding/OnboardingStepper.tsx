@@ -1,107 +1,110 @@
 "use client";
 
-import { Briefcase, Check, UserRound } from "lucide-react";
+export type OnboardingStep =
+  | "identity"
+  | "activity"
+  | "address"
+  | "associates"
+  | "review";
 
-export type OnboardingStep = "basic-info" | "business-details";
-
-interface StepDef {
+export interface OnboardingStepDefinition {
   key: OnboardingStep;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
 }
 
-const STEPS: StepDef[] = [
-  { key: "basic-info", label: "Basic Info", icon: UserRound },
-  { key: "business-details", label: "Business Details", icon: Briefcase },
+export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
+  { key: "identity", label: "Business" },
+  { key: "activity", label: "Activity" },
+  { key: "address", label: "Address" },
+  { key: "associates", label: "People" },
+  { key: "review", label: "Review" },
 ];
 
 type StepState = "done" | "active" | "upcoming";
 
-function iconClass(state: StepState) {
+function segmentClass(state: StepState) {
   if (state === "done") {
-    return "bg-primary-500 text-white dark:bg-primary-500";
+    return "bg-primary-500 dark:bg-primary-500";
   }
   if (state === "active") {
-    return "bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-300";
+    return "bg-primary-300 dark:bg-primary-700";
   }
-  return "bg-white text-gray-400 dark:bg-gray-800 dark:text-gray-500";
+  return "bg-gray-200 dark:bg-gray-800";
 }
 
 function labelClass(state: StepState) {
-  return state === "upcoming"
-    ? "text-gray-400 dark:text-gray-500"
-    : "text-gray-600 dark:text-gray-300";
+  if (state === "active") return "text-gray-900 dark:text-white";
+  if (state === "done") return "text-gray-600 dark:text-gray-300";
+  return "text-gray-400 dark:text-gray-600";
 }
 
 export default function OnboardingStepper({
   current,
-  basicInfoDone,
-  businessDetailsDone,
+  furthestStep,
+  onStepChange,
 }: {
   current: OnboardingStep;
-  basicInfoDone: boolean;
-  businessDetailsDone: boolean;
+  furthestStep?: OnboardingStep;
+  onStepChange?: (step: OnboardingStep) => void;
 }) {
-  const stepIndex = STEPS.findIndex((s) => s.key === current);
+  const stepIndex = ONBOARDING_STEPS.findIndex((s) => s.key === current);
+  const furthestStepIndex = Math.max(
+    stepIndex,
+    furthestStep
+      ? ONBOARDING_STEPS.findIndex((s) => s.key === furthestStep)
+      : stepIndex,
+  );
+  const activeLabel = ONBOARDING_STEPS[stepIndex]?.label ?? "";
 
   const getState = (key: OnboardingStep): StepState => {
     if (key === current) return "active";
-    const keyIndex = STEPS.findIndex((s) => s.key === key);
+    const keyIndex = ONBOARDING_STEPS.findIndex((s) => s.key === key);
     if (keyIndex < stepIndex) return "done";
-    // Also treat as done if the user has already completed that step
-    if (key === "basic-info" && basicInfoDone) return "done";
-    if (key === "business-details" && businessDetailsDone) return "done";
     return "upcoming";
   };
 
   return (
-    <ol
-      className="flex w-full items-center gap-4 rounded-2xl bg-gray-100/90 px-5 py-4 sm:gap-6 sm:px-6 dark:bg-gray-900/70"
+    <div
+      className="rounded-xl border border-gray-100 bg-white px-3 py-3 shadow-sm dark:border-gray-900 dark:bg-gray-950"
       aria-label="Verification progress"
     >
-      {STEPS.map((step, idx) => {
-        const state = getState(step.key);
-        const Icon = step.icon;
-        const isLast = idx === STEPS.length - 1;
-        const connectorDone = getState(STEPS[idx + 1]?.key as OnboardingStep) !== "upcoming";
+      <div className="mb-2 flex items-center justify-between text-xs">
+        <span className="font-semibold text-gray-900 dark:text-white">
+          Step {stepIndex + 1} of {ONBOARDING_STEPS.length}
+        </span>
+        <span className="font-medium text-gray-500 dark:text-gray-400">
+          {activeLabel}
+        </span>
+      </div>
 
-        return (
-          <li
-            key={step.key}
-            className={`flex min-w-0 items-center gap-3 ${isLast ? "" : "flex-1"}`}
-          >
-            <div className="flex min-w-0 flex-col items-center gap-2">
-              <span
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${iconClass(state)}`}
+      <ol className="grid grid-cols-5 gap-1.5">
+        {ONBOARDING_STEPS.map((step, idx) => {
+          const state = getState(step.key);
+          const canSelect = idx <= furthestStepIndex;
+
+          return (
+            <li key={step.key} className="min-w-0">
+              <button
+                type="button"
+                disabled={!canSelect}
+                onClick={() => onStepChange?.(step.key)}
                 aria-current={state === "active" ? "step" : undefined}
+                className="group block w-full min-w-0 text-left disabled:cursor-default"
               >
-                {state === "done" ? (
-                  <Check className="h-5 w-5" />
-                ) : (
-                  <Icon className="h-5 w-5" />
-                )}
-              </span>
-
-              <p
-                className={`truncate text-xs font-medium sm:text-sm ${labelClass(state)}`}
-              >
-                {step.label}
-              </p>
-            </div>
-
-            {!isLast ? (
-              <span
-                className={`mb-6 h-0.5 flex-1 rounded-full ${
-                  connectorDone
-                    ? "bg-primary-400 dark:bg-primary-700"
-                    : "bg-gray-300 dark:bg-gray-700"
-                }`}
-                aria-hidden="true"
-              />
-            ) : null}
-          </li>
-        );
-      })}
-    </ol>
+                <span
+                  className={`block h-1.5 rounded-full transition-colors ${segmentClass(state)}`}
+                  aria-hidden="true"
+                />
+                <span
+                  className={`mt-1 hidden truncate text-[11px] font-medium sm:block ${labelClass(state)}`}
+                >
+                  {step.label}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }

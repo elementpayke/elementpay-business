@@ -1,19 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Copy, Wallet2 } from "lucide-react";
+import { CheckCircle2, Copy, Smartphone, Wallet2 } from "lucide-react";
 import CopyToast from "@/components/wallets/CopyToast";
 import { useCopyToClipboard } from "@/lib/wallets/useCopyToClipboard";
 import { useDepositStore } from "@/stores/depositStore";
-
-function formatProcessingTime(ms: number | null): string {
-  if (!ms || ms < 0) return "—";
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  if (m === 0) return `${s}s`;
-  return `${m}m ${s}s`;
-}
+import ReceivingAccountCard from "./ReceivingAccountCard";
 
 export default function DepositSuccessStep() {
   const router = useRouter();
@@ -22,17 +14,50 @@ export default function DepositSuccessStep() {
     selectedCurrency,
     selectedWalletLabel,
     amountFiat,
+    paymentMethod,
+    selectedProvider,
     orderResult,
   } = useDepositStore();
 
-  const txId = orderResult?.orderId ?? "—";
+  const orderId = orderResult?.merchant_order_id ?? null;
+  const aggregatorOrderId = orderResult?.order?.order_id ?? null;
+  const instructions = orderResult?.payment_instructions ?? null;
+
+  // Bank pay-in: the receiving-account details come from the accept-quote
+  // response (`payment_instructions`). Prefer those; only fall back to
+  // anticipated details if the backend returned an incomplete payload.
+  const showBankReceivingCard =
+    paymentMethod === "bank" &&
+    selectedProvider !== null &&
+    instructions?.type !== "crypto_deposit" &&
+    instructions?.type !== "momo";
+  const bankReceiving = showBankReceivingCard
+    ? (() => {
+        const hasRealDetails = Boolean(
+          instructions?.account_number || instructions?.bank_name,
+        );
+        return {
+          details: {
+            account_name:
+              instructions?.account_holder_name ?? "ElementPay Collections",
+            account_number: instructions?.account_number ?? "0000000000",
+            bank_name: instructions?.bank_name ?? selectedProvider!.name,
+            reference:
+              instructions?.reference ??
+              (orderId !== null ? `ELP-${orderId}` : "ELP-<ORDER_ID>"),
+          },
+          isFallback: !hasRealDetails,
+        };
+      })()
+    : null;
+
   const amountDisplay = `${selectedCurrency ?? ""} ${amountFiat.toLocaleString("en-US", {
     maximumFractionDigits: 2,
   })}`.trim();
 
   function viewDetails() {
-    if (orderResult?.orderId) {
-      router.push(`/dashboard/transactions/${orderResult.orderId}`);
+    if (orderId !== null) {
+      router.push(`/dashboard/transactions/${orderId}`);
     } else {
       router.push("/dashboard/transactions");
     }
@@ -47,28 +72,111 @@ export default function DepositSuccessStep() {
       </div>
 
       <div className="mx-auto max-w-[560px] rounded-xl border border-[#ECEEF5] bg-white p-8 text-center">
-        <p className="text-2xl font-bold text-[#1A2138]">Deposit Confirmed!</p>
+        <p className="text-2xl font-bold text-[#1A2138]">Order created</p>
         <p className="mt-2 text-sm text-[#7E8498]">
-          Congratulations. You successfully deposited
+          We&apos;re processing your deposit of
         </p>
         <p className="mt-1 text-2xl font-bold text-[#1A2138]">{amountDisplay}</p>
         <p className="mt-1 text-sm text-[#7E8498]">
-          into <span className="font-semibold text-[#1A2138]">{selectedWalletLabel ?? "Wallet"}</span>
+          into{" "}
+          <span className="font-semibold text-[#1A2138]">
+            {selectedWalletLabel ?? "Wallet"}
+          </span>
         </p>
+
+        {bankReceiving ? (
+          <div className="mt-6 text-left">
+            <ReceivingAccountCard
+              details={bankReceiving.details}
+              isFallback={bankReceiving.isFallback}
+            />
+          </div>
+        ) : instructions?.type === "momo" ? (
+          <div className="mt-6 flex items-start gap-3 rounded-lg border border-[#BFE9D2] bg-[#F1FBF5] p-4 text-left text-sm text-[#1E5C3F]">
+            <Smartphone className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="space-y-1">
+              <p>
+                {selectedProvider?.name
+                  ? `Check your phone for the ${selectedProvider.name} prompt and approve it to complete the deposit. `
+                  : "Check your phone for the payment prompt and approve it to complete the deposit. "}
+                Your wallet will be credited once payment confirms.
+              </p>
+              {instructions.source ? (
+                <p className="text-xs text-[#1E5C3F]/80">
+                  Paying from:{" "}
+                  <span className="font-medium">
+                    {String(
+                      (instructions.source as Record<string, unknown>)
+                        .accountNumber ?? "",
+                    )}
+                  </span>
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : instructions?.type === "crypto_deposit" ? (
+          <div className="mt-6 space-y-3 rounded-lg border border-[#ECEEF5] bg-[#FAFBFE] p-4 text-left text-sm text-[#4D556D]">
+            <p className="font-semibold text-[#1A2138]">
+              Send crypto to complete the deposit
+            </p>
+            {instructions.wallet_address ? (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-[#ECEEF5] bg-white p-3">
+                <span className="break-all font-mono text-xs text-[#1A2138]">
+                  {instructions.wallet_address}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    copy(
+                      instructions.wallet_address ?? "",
+                      "Address copied",
+                    )
+                  }
+                  aria-label="Copy deposit address"
+                  className="shrink-0 text-[#7E8498] transition hover:text-primary-500"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
+            {instructions.amount && instructions.currency ? (
+              <p className="text-xs">
+                Amount:{" "}
+                <span className="font-semibold text-[#1A2138]">
+                  {instructions.amount} {instructions.currency}
+                  {instructions.network ? ` (${instructions.network})` : ""}
+                </span>
+              </p>
+            ) : null}
+            {instructions.expires_at ? (
+              <p className="text-xs">
+                Window closes:{" "}
+                <span className="font-semibold text-[#1A2138]">
+                  {new Date(instructions.expires_at).toLocaleString()}
+                </span>
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-lg border border-[#ECEEF5] bg-[#FAFBFE] p-4 text-left text-sm text-[#4D556D]">
+            Follow the payment instructions to complete the transfer. Your
+            wallet will be credited once funds are received.
+          </div>
+        )}
 
         <hr className="my-6 border-t border-[#ECEEF5]" />
 
         <dl className="space-y-3 text-left">
-          <Row label="Transaction ID">
+          <Row label="Order ID">
             <span className="flex items-center gap-2">
               <span className="font-mono text-sm text-[#1A2138]">
-                {txId.length > 20 ? `${txId.slice(0, 10)}…${txId.slice(-6)}` : txId}
+                {orderId !== null ? String(orderId) : "—"}
               </span>
-              {orderResult?.orderId ? (
+              {orderId !== null ? (
                 <button
                   type="button"
-                  onClick={() => copy(orderResult.orderId!, "Transaction ID copied")}
-                  aria-label="Copy transaction ID"
+                  onClick={() => copy(String(orderId), "Order ID copied")}
+                  aria-label="Copy order ID"
                   className="text-[#7E8498] transition hover:text-primary-500"
                 >
                   <Copy className="h-3.5 w-3.5" />
@@ -76,15 +184,17 @@ export default function DepositSuccessStep() {
               ) : null}
             </span>
           </Row>
-          <Row label="Transaction status">
+          {aggregatorOrderId ? (
+            <Row label="Aggregator ref">
+              <span className="font-mono text-[11px] text-[#4D556D]">
+                {aggregatorOrderId}
+              </span>
+            </Row>
+          ) : null}
+          <Row label="Status">
             <span className="inline-flex items-center gap-1 rounded-md border border-[#BFE9D2] bg-[#E8F8EF] px-2 py-1 text-[11px] font-medium text-[#1E9F72]">
               <CheckCircle2 className="h-3 w-3" />
-              Successful
-            </span>
-          </Row>
-          <Row label="Transaction processing time">
-            <span className="text-sm text-[#1A2138]">
-              {formatProcessingTime(orderResult?.processingTimeMs ?? null)}
+              {orderResult?.status ?? "processing"}
             </span>
           </Row>
         </dl>
@@ -102,7 +212,7 @@ export default function DepositSuccessStep() {
             onClick={viewDetails}
             className="inline-flex h-12 items-center justify-center rounded-lg bg-primary-500 text-sm font-semibold text-white transition hover:brightness-105"
           >
-            View deposit details
+            View order
           </button>
         </div>
       </div>
@@ -112,7 +222,13 @@ export default function DepositSuccessStep() {
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between">
       <dt className="text-sm text-[#7E8498]">{label}</dt>

@@ -3,6 +3,19 @@
 import { useEffect, useState } from "react";
 import { Check, Link2, Loader2, X } from "lucide-react";
 import { Checkbox } from "@/components/invoices/formPrimitives";
+import {
+  buildInvoicePayload,
+  validateInvoiceDraft,
+} from "@/stores/invoicePayload";
+import { useInvoiceStore } from "@/stores/invoiceStore";
+import {
+  createDraft,
+  getPublicLink,
+  issueInvoice,
+  sendInvoice,
+  updateDraft,
+  type SendVia,
+} from "@/lib/invoices/api";
 
 type SendChannel = "email" | "whatsapp";
 
@@ -16,6 +29,15 @@ type SendInvoiceModalProps = {
   onSent?: (channels: SendChannel[]) => void;
 };
 
+function channelsToSendVia(channels: Set<SendChannel>): SendVia {
+  const hasEmail = channels.has("email");
+  const hasWhatsApp = channels.has("whatsapp");
+  if (hasEmail && hasWhatsApp) return "both";
+  if (hasEmail) return "email";
+  if (hasWhatsApp) return "whatsapp";
+  return "none";
+}
+
 export default function SendInvoiceModal(props: SendInvoiceModalProps) {
   if (!props.open) return null;
   return <SendInvoiceModalBody {...props} />;
@@ -23,15 +45,21 @@ export default function SendInvoiceModal(props: SendInvoiceModalProps) {
 
 function SendInvoiceModalBody({
   onClose,
-  invoiceId,
   clientEmail,
   clientPhone,
   onEdit,
   onSent,
 }: SendInvoiceModalProps) {
+  const draft = useInvoiceStore((s) => s.draft);
+  const draftId = useInvoiceStore((s) => s.draftId);
+  const setDraftId = useInvoiceStore((s) => s.setDraftId);
+  const issued = useInvoiceStore((s) => s.issued);
+  const setIssued = useInvoiceStore((s) => s.setIssued);
   const [channels, setChannels] = useState<Set<SendChannel>>(new Set());
   const [linkCopied, setLinkCopied] = useState(false);
+  const [linkLoading, setLinkLoading] = useState(false);
   const [sendState, setSendState] = useState<"idle" | "sending" | "sent">("idle");
+  const [sendError, setSendError] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -48,23 +76,95 @@ function SendInvoiceModalBody({
     });
   }
 
+  async function ensureDraftSaved(): Promise<number> {
+    const payload = buildInvoicePayload(draft, "issued");
+    const saved =
+      draftId != null
+        ? await updateDraft(draftId, payload)
+        : await createDraft(payload);
+    setDraftId(saved.id);
+    return saved.id;
+  }
+
   async function handleCopyLink() {
-    const invoiceLink = `${window.location.origin}/pay/${invoiceId}`;
+    setSendError(null);
+    setLinkLoading(true);
     try {
-      await navigator.clipboard.writeText(invoiceLink);
+      let invoiceId = issued?.id ?? null;
+      if (invoiceId == null) {
+        // Issue (without sending) so we have a public link.
+        const validation = validateInvoiceDraft(draft, "issued");
+        if (validation.length > 0) {
+          throw new Error(validation[0].message);
+        }
+        const savedDraftId = await ensureDraftSaved();
+        const inv = await issueInvoice({
+          draftId: savedDraftId,
+          sendVia: "none",
+        });
+        invoiceId = inv.id;
+        setIssued({
+          id: inv.id,
+          invoiceNumber: inv.invoice_number,
+          publicToken: inv.public_token,
+        });
+      }
+      const link = await getPublicLink(invoiceId);
+      await navigator.clipboard.writeText(link.public_url);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
-    } catch {
-      /* no-op */
+    } catch (err) {
+      setSendError(
+        err instanceof Error ? err.message : "Could not copy invoice link",
+      );
+    } finally {
+      setLinkLoading(false);
     }
   }
 
   async function handleSend() {
     if (channels.size === 0) return;
+    setSendError(null);
+    const validation = validateInvoiceDraft(draft, "issued");
+    if (validation.length > 0) {
+      setSendError(validation[0].message);
+      return;
+    }
     setSendState("sending");
-    await new Promise((r) => setTimeout(r, 800));
-    setSendState("sent");
-    onSent?.(Array.from(channels));
+    try {
+      const sendVia = channelsToSendVia(channels);
+      if (issued?.id != null) {
+        // Already issued — call the standalone send endpoint.
+        const inv = await sendInvoice({
+          invoiceId: issued.id,
+          sendVia,
+          toEmail: draft.client.email || null,
+          toPhoneE164: null,
+        });
+        setIssued({
+          id: inv.id,
+          invoiceNumber: inv.invoice_number,
+          publicToken: inv.public_token,
+        });
+      } else {
+        // First-time issue with delivery in the same call.
+        const savedDraftId = await ensureDraftSaved();
+        const inv = await issueInvoice({
+          draftId: savedDraftId,
+          sendVia,
+        });
+        setIssued({
+          id: inv.id,
+          invoiceNumber: inv.invoice_number,
+          publicToken: inv.public_token,
+        });
+      }
+      setSendState("sent");
+      onSent?.(Array.from(channels));
+    } catch (err) {
+      setSendState("idle");
+      setSendError(err instanceof Error ? err.message : "Could not send invoice");
+    }
   }
 
   return (
@@ -131,9 +231,14 @@ function SendInvoiceModalBody({
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 transition hover:text-primary-700"
+                disabled={linkLoading}
+                className="inline-flex items-center gap-2 text-sm font-medium text-primary-600 transition hover:text-primary-700 disabled:opacity-60"
               >
-                {linkCopied ? (
+                {linkLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Preparing link…
+                  </>
+                ) : linkCopied ? (
                   <>
                     <Check className="h-4 w-4" /> Link copied
                   </>
@@ -145,6 +250,12 @@ function SendInvoiceModalBody({
                 )}
               </button>
             </div>
+
+            {sendError ? (
+              <p className="px-6 pt-3 text-xs text-[#E35D5B]" role="alert">
+                {sendError}
+              </p>
+            ) : null}
 
             <div className="mt-6 grid grid-cols-2 gap-3 bg-[#FAFBFE] px-6 py-5">
               <button

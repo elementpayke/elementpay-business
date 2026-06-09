@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Printer } from "lucide-react";
 import InvoicePreview from "@/components/invoices/InvoicePreview";
 import SendInvoiceModal from "@/components/invoices/SendInvoiceModal";
-import { useInvoiceStore } from "@/stores/invoiceStore";
+import ShareInvoiceMenu from "@/components/invoices/ShareInvoiceMenu";
+import {
+  calculateTotals,
+  formatInvoiceMoney,
+  useInvoiceStore,
+} from "@/stores/invoiceStore";
 
 function HistoryButton({
   disabled = false,
@@ -49,9 +54,15 @@ export default function InvoicePreviewPage() {
     }, 1500);
   }
 
+  const totals = calculateTotals(draft);
+  const currency = draft.preferredCurrency || "USD";
+  const totalLabel = formatInvoiceMoney(totals.total, currency);
+  const clientName =
+    [draft.client.firstName, draft.client.lastName].filter(Boolean).join(" ") || undefined;
+
   return (
     <section className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
+      <header className="no-print flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
             <HistoryButton onClick={() => router.back()} ariaLabel="Back">
@@ -66,20 +77,19 @@ export default function InvoicePreviewPage() {
           </h1>
         </div>
         <div className="flex items-center gap-5 text-sm font-semibold">
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard/invoices/create")}
-            className="text-primary-600 transition hover:text-primary-700"
-          >
-            Save to draft
-          </button>
+          <ShareInvoiceMenu
+            invoiceId={draft.invoiceId}
+            invoiceTitle={draft.invoiceTitle}
+            clientName={clientName}
+            totalLabel={totalLabel}
+          />
           <button
             type="button"
             onClick={() => window.print()}
             className="inline-flex items-center gap-1.5 text-primary-600 transition hover:text-primary-700"
           >
-            <Download className="h-4 w-4" />
-            Download PDF
+            <Printer className="h-4 w-4" />
+            Print / Save as PDF
           </button>
           <button
             type="button"
@@ -91,14 +101,17 @@ export default function InvoicePreviewPage() {
         </div>
       </header>
 
-      <div className="rounded-2xl border border-[#ECEEF5] bg-white p-8 shadow-[0_4px_30px_rgba(16,24,40,0.04)]">
+      <div
+        id="invoice-printable"
+        className="invoice-printable rounded-2xl border border-[#ECEEF5] bg-white p-8 shadow-[0_4px_30px_rgba(16,24,40,0.04)]"
+      >
         <InvoicePreview />
       </div>
 
       <button
         type="button"
         onClick={() => setModalOpen(true)}
-        className="h-12 w-full rounded-xl bg-primary-500 text-sm font-semibold text-white transition hover:brightness-105"
+        className="no-print h-12 w-full rounded-xl bg-primary-500 text-sm font-semibold text-white transition hover:brightness-105"
       >
         Send invoice
       </button>

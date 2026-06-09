@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
-import { usePrivy } from "@privy-io/react-auth";
 
 type Provider = "google" | "apple";
 
@@ -69,42 +67,7 @@ function ProviderButton({
   );
 }
 
-function PrivyButtons() {
-  const { login } = usePrivy();
-  const [pending, setPending] = useState<Provider | null>(null);
-
-  const handle = async (provider: Provider) => {
-    setPending(provider);
-    try {
-      await login({ loginMethods: [provider] });
-    } catch {
-      // User likely closed the modal — no UI feedback needed.
-    } finally {
-      setPending(null);
-    }
-  };
-
-  return (
-    <div className="grid grid-cols-1 gap-3">
-      <ProviderButton
-        provider="google"
-        label="Continue with Google"
-        onClick={() => handle("google")}
-        loading={pending === "google"}
-        disabled={false}
-      />
-      <ProviderButton
-        provider="apple"
-        label="Continue with Apple"
-        onClick={() => handle("apple")}
-        loading={pending === "apple"}
-        disabled={false}
-      />
-    </div>
-  );
-}
-
-function DisabledButtons() {
+export default function SocialAuthButtons() {
   return (
     <div className="grid grid-cols-1 gap-3">
       <ProviderButton
@@ -122,13 +85,8 @@ function DisabledButtons() {
         disabled
       />
       <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-        Social sign-in is not configured in this environment.
+        Social sign-in is coming soon.
       </p>
     </div>
   );
-}
-
-export default function SocialAuthButtons() {
-  const privyEnabled = Boolean(process.env.NEXT_PUBLIC_PRIVY_APP_ID);
-  return privyEnabled ? <PrivyButtons /> : <DisabledButtons />;
 }
