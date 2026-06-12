@@ -3,6 +3,8 @@
 type MpesaMobileFormProps = {
   phoneNumber: string;
   onPhoneChange: (val: string) => void;
+  /** Non-blocking validity warning for the phone, or null. */
+  phoneWarning?: string | null;
   accountName: string;
   onAccountNameChange: (val: string) => void;
   /** Chosen provider name, used to personalise the phone label/hint. */
@@ -12,6 +14,7 @@ type MpesaMobileFormProps = {
 export default function MpesaMobileForm({
   phoneNumber,
   onPhoneChange,
+  phoneWarning,
   accountName,
   onAccountNameChange,
   providerName,
@@ -32,11 +35,21 @@ export default function MpesaMobileForm({
           placeholder="+254711111111"
           value={phoneNumber}
           onChange={(e) => onPhoneChange(e.target.value.replace(/[^\d+]/g, "").slice(0, 16))}
-          className="h-11 w-full rounded-lg border border-[#ECEEF4] bg-[#FAFBFE] px-3.5 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
+          className={`h-11 w-full rounded-lg border bg-[#FAFBFE] px-3.5 text-sm text-[#1F2640] outline-none transition focus:bg-white ${
+            phoneWarning
+              ? "border-[#E7A23D] focus:border-[#E7A23D]"
+              : "border-[#ECEEF4] focus:border-primary-300"
+          }`}
         />
-        <p className="mt-1 text-[11px] text-[#8E93A7]">
-          The number you&apos;ll pay from. Use the international format starting with +.
-        </p>
+        {phoneWarning ? (
+          <p className="mt-1 text-[11px] text-[#B7791F]">
+            {phoneWarning} You can still continue, but double-check the number.
+          </p>
+        ) : (
+          <p className="mt-1 text-[11px] text-[#8E93A7]">
+            The number you&apos;ll pay from. Use the international format starting with +.
+          </p>
+        )}
       </div>
 
       <div>

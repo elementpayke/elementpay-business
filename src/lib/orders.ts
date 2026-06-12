@@ -39,6 +39,47 @@ export type OrderTypeName = "OnRamp" | "OffRamp";
 
 export type CashoutType = "PHONE" | "TILL" | "PAYBILL" | "BANK" | "COFFEE_REDEEM";
 
+// ---- Order status -------------------------------------------------------
+// Mirrors the backend order lifecycle (see ORDER_FLOW.md "Statuses").
+export type OrderStatusName =
+  | "processing"
+  | "completed"
+  | "failed"
+  | "refunded"
+  | "canceled"
+  | "frozen";
+
+/** Statuses after which the status websocket closes — no further updates. */
+export const TERMINAL_ORDER_STATUSES = [
+  "completed",
+  "failed",
+  "refunded",
+  "canceled",
+] as const;
+
+export type TerminalOrderStatus = (typeof TERMINAL_ORDER_STATUSES)[number];
+
+/** Case-insensitive terminal-status check. */
+export function isTerminalOrderStatus(status: string | null | undefined): boolean {
+  if (!status) return false;
+  return (TERMINAL_ORDER_STATUSES as readonly string[]).includes(status.toLowerCase());
+}
+
+/**
+ * Server message pushed over the order status websocket
+ * (`/api/v1/orders/{merchant_order_id}/status/ws`). The server sends the
+ * current status on connect, pushes again when any field changes, and closes
+ * after a terminal status.
+ */
+export type OrderStatusEvent = {
+  type: "order.status";
+  merchant_order_id: number;
+  status: string;
+  provider_status: string | null;
+  aggregator_order_id: string | null;
+  updated_at: string | null;
+};
+
 // ---- Quote --------------------------------------------------------------
 
 export type QuoteOrderIn = {
@@ -114,12 +155,21 @@ type CreateResponseEnvelope = {
 // an order.
 
 export type AccountBlock = {
-  /** Rail type. Today: "momo". Future: "bank", "till", "paybill". */
+  /** Rail type. Supported by the backend: "momo" | "bank" | "till" | "paybill". */
   accountType: string;
   /** E.164 phone for momo, account number for bank. */
   accountNumber: string;
   /** Holder name on the account. */
   accountName: string;
+  /**
+   * Yellow Card operator / institution id — `providers[].id` from
+   * `GET /supported/catalog`. Forwarded as `payment_method.network_id` on the
+   * quote. Required in practice for bank payouts so the aggregator knows which
+   * institution to route to; optional for momo.
+   */
+  networkId?: string;
+  /** ISO 3166-1 alpha-2 country of the fiat-rail account. */
+  countryCode?: string;
 };
 
 export type PIIBlock = {
@@ -301,6 +351,13 @@ type OrderListEnvelope = {
 
 // ---- Calls --------------------------------------------------------------
 
+/**
+ * @deprecated DO NOT USE. Legacy stateless probe — the backend's
+ * `aggregator_client.get_quote` was removed and this path now always fails
+ * with a 410. Use `createOrderQuote` (stateful quote → accept) instead.
+ * Kept only so historical callers fail loudly at the callsite rather than
+ * silently at runtime; remove once nothing imports it.
+ */
 export async function quoteOrder(payload: QuoteOrderIn): Promise<QuoteOrderOut> {
   const res = await authedFetch(`${API_BASE}/api/v1/orders/quote`, {
     method: "POST",

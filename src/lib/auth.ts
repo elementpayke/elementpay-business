@@ -284,3 +284,9 @@ export function isAuthenticated(): boolean {
   if (typeof window === "undefined") return false;
   return !!localStorage.getItem("access_token");
 }
+
+/** Current JWT access token, or null when unauthenticated / on the server. */
+export function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("access_token");
+}

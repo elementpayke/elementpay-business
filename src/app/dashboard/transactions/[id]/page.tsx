@@ -19,6 +19,9 @@ import ShareReceiptDropdown from "@/components/transactions/ShareReceiptDropdown
 import { useTransaction } from "@/lib/dashboard/hooks";
 import { TransactionNotFoundError } from "@/lib/dashboard/api";
 import { toTransactionRow } from "@/lib/dashboard/transactionView";
+import { isTerminalOrderStatus } from "@/lib/orders";
+import { useOrderStatusStream } from "@/lib/orders/useOrderStatusStream";
+import type { SocketStatus } from "@/lib/orders/orderStatusSocket";
 
 function HistoryButton({
   disabled = false,
@@ -85,6 +88,39 @@ function formatTimestamp(iso: string | null): { date: string; time: string } {
   };
 }
 
+/** Small pill showing the live websocket connection state next to the status. */
+function LiveStatusIndicator({
+  socketStatus,
+  isTerminal,
+}: {
+  socketStatus: SocketStatus;
+  isTerminal: boolean;
+}) {
+  // Once settled there are no more updates — don't imply a live connection.
+  if (isTerminal) return null;
+
+  if (socketStatus === "open") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F8EF] px-2 py-0.5 text-[11px] font-medium text-[#1E9F72]">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1E9F72] opacity-60" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#1E9F72]" />
+        </span>
+        Live
+      </span>
+    );
+  }
+  if (socketStatus === "connecting" || socketStatus === "reconnecting") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF7E8] px-2 py-0.5 text-[11px] font-medium text-[#B7791F]">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Connecting…
+      </span>
+    );
+  }
+  return null;
+}
+
 export default function TransactionDetailsPage({
   params,
 }: {
@@ -94,6 +130,14 @@ export default function TransactionDetailsPage({
   const { id } = use(params);
   const { data: txn, isLoading, isError, error } = useTransaction(id);
   const [idCopied, setIdCopied] = useState(false);
+
+  // Stream live status updates while the order isn't already terminal. The hook
+  // patches the ["transaction", id] cache, so `txn.status` / StatusBadge below
+  // update automatically; we only read socketStatus/isTerminal for the badge.
+  const alreadyTerminal = isTerminalOrderStatus(txn?.status);
+  const { socketStatus, isTerminal } = useOrderStatusStream(id, {
+    enabled: Boolean(txn) && !alreadyTerminal,
+  });
 
   async function copyId() {
     if (!txn) return;
@@ -247,7 +291,13 @@ export default function TransactionDetailsPage({
               </KVRow>
             ) : null}
             <KVRow label="Transaction status">
-              <StatusBadge status={row.status} />
+              <span className="inline-flex items-center gap-2">
+                <LiveStatusIndicator
+                  socketStatus={socketStatus}
+                  isTerminal={isTerminal || alreadyTerminal}
+                />
+                <StatusBadge status={row.status} />
+              </span>
             </KVRow>
           </div>
         </div>

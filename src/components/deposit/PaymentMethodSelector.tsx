@@ -18,6 +18,8 @@ type PaymentMethodSelectorProps = {
   ) => void;
   phoneNumber: string;
   onPhoneChange: (val: string) => void;
+  /** Non-blocking validity warning for the momo phone, or null. */
+  phoneWarning?: string | null;
   accountName: string;
   onAccountNameChange: (val: string) => void;
 };
@@ -29,6 +31,7 @@ export default function PaymentMethodSelector({
   onSelectProvider,
   phoneNumber,
   onPhoneChange,
+  phoneWarning,
   accountName,
   onAccountNameChange,
 }: PaymentMethodSelectorProps) {
@@ -88,6 +91,7 @@ export default function PaymentMethodSelector({
                 <MpesaMobileForm
                   phoneNumber={phoneNumber}
                   onPhoneChange={onPhoneChange}
+                  phoneWarning={phoneWarning}
                   accountName={accountName}
                   onAccountNameChange={onAccountNameChange}
                   providerName={selectedProvider.name}

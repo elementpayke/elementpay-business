@@ -16,6 +16,7 @@ import {
   type DepositPaymentMethod,
   type DepositProvider,
 } from "@/stores/depositStore";
+import { validatePhoneForCountry } from "@/lib/phone";
 import DepositDropdown from "./DepositDropdown";
 import PaymentMethodSelector from "./PaymentMethodSelector";
 
@@ -110,6 +111,16 @@ export default function DepositDetailsStep() {
   const canSubmit = Boolean(
     selectedWalletAddress && selectedCurrency && amountFiat > 0 && isMethodValid,
   );
+
+  // Momo only: non-blocking validity warning against the corridor's phone rules.
+  const phoneCheck =
+    paymentMethod === "momo"
+      ? validatePhoneForCountry(phoneNumber, selectedCountry)
+      : null;
+  const phoneWarning =
+    paymentMethod === "momo" && phoneNumber.trim() && phoneCheck && !phoneCheck.isValid
+      ? phoneCheck.message ?? null
+      : null;
 
   return (
     <div className="space-y-4">
@@ -224,6 +235,7 @@ export default function DepositDetailsStep() {
             onSelectProvider={handleSelectProvider}
             phoneNumber={phoneNumber}
             onPhoneChange={setPhoneNumber}
+            phoneWarning={phoneWarning}
             accountName={accountName}
             onAccountNameChange={setAccountName}
           />

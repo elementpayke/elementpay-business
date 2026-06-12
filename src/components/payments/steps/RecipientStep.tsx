@@ -16,10 +16,7 @@ export default function RecipientStep() {
         email: storeRecipient.email,
         countryCode: storeRecipient.countryCode,
         methodKey: storeRecipient.methodOptionKey,
-        accountNumber: storeRecipient.accountNumber,
-        accountName: storeRecipient.name ?? "",
         bankCode: storeRecipient.bankCode ?? "",
-        bankPhoneNumber: storeRecipient.bankPhoneNumber ?? "",
       }
     : undefined;
 
@@ -33,10 +30,9 @@ export default function RecipientStep() {
       paymentMethod: values.methodLabel,
       methodOptionKey: values.methodOptionKey,
       accountType: isMomo ? "momo" : "bank",
-      accountNumber: values.accountNumber,
-      name: values.accountName,
       bankCode: isMomo ? undefined : values.bankCode,
-      bankPhoneNumber: isMomo ? undefined : values.bankPhoneNumber,
+      bankName: isMomo ? undefined : values.bankName,
+      bankNetworkId: isMomo ? undefined : values.bankNetworkId,
     });
     setPhase("payment-amount");
   }

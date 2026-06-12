@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { OrderCreateOut, QuoteOrderOut } from "@/lib/orders";
+import type { OrderAcceptOut, OrderQuoteOut } from "@/lib/orders";
 import type { NormalizedQuoteError } from "@/lib/orderErrors";
 
 export type SendPaymentPhase =
@@ -11,6 +11,11 @@ export type SendPaymentPhase =
   | "success"
   | "error";
 
+/**
+ * Step 1 — WHO and HOW. Identifies the recipient and the payout rail only.
+ * The actual destination account (number/name/phone) is collected on step 2,
+ * after the amount, per the send-payment flow spec.
+ */
 export type RecipientDetails = {
   email: string;
   /** Display country name from the catalog, e.g. "Kenya". */
@@ -25,28 +30,41 @@ export type RecipientDetails = {
    *  picker on back-nav; distinguishes the bank method from individual rails. */
   methodOptionKey: string;
   accountType: "momo" | "bank";
-  accountNumber: string;
-  name?: string;
-  // BANK-only: backend requires bank_code + phone_number alongside account_number
+  /** BANK-only: which bank we offramp to (CatalogProvider.code). Chosen on step 1
+   *  from the list of banks available for the corridor. */
   bankCode?: string;
-  bankPhoneNumber?: string;
+  /** BANK-only: human name of the chosen bank, for display on review. */
+  bankName?: string;
+  /** BANK-only: aggregator institution id (CatalogProvider.id). Sent as
+   *  `destination.networkId` on the OffRamp quote so the aggregator knows
+   *  which institution to route the payout to. */
+  bankNetworkId?: string;
 };
 
+/**
+ * Step 2 — HOW MUCH and WHERE. Carries the funding wallet/token, the amount
+ * pair (recipient fiat + derived USDC the sender spends), and the destination
+ * account details that depend on the rail chosen in step 1.
+ */
 export type AmountDetails = {
   sourceWalletAddress: string;
   tokenAddress: string;
   tokenSymbol: string;
   network: string;
   refundAddress: string;
+  /** Amount the recipient receives, in their fiat currency. */
   fiatAmount: number;
+  /** USDC the sender spends. The OffRamp quote (step 3) is denominated in
+   *  crypto, and the live quote on the review step is the source of truth for
+   *  this value — step 2 leaves it "" and ReviewStep derives it from the
+   *  quote response. Kept in the shape for compatibility. */
+  cryptoAmount: string;
   receiveCurrency: string;
   receiveCountry: string;
-};
-
-export type PaymentResult = {
-  order: OrderCreateOut;
-  processingMs: number;
-  completedAt: number;
+  /** Destination account holder name. */
+  accountName: string;
+  /** E.164 phone (momo) or bank account number (bank). */
+  accountNumber: string;
 };
 
 export type PaymentError = {
@@ -60,10 +78,12 @@ type SendPaymentState = {
   recipient: RecipientDetails | null;
   amount: AmountDetails | null;
   reference: string;
-  quote: QuoteOrderOut | null;
+  /** Stateful quote from POST /orders/quote (OffRamp). Carries quote_id. */
+  quote: OrderQuoteOut | null;
   quoteLoading: boolean;
   quoteError: NormalizedQuoteError | null;
-  result: PaymentResult | null;
+  /** Accept-quote response — the real created order + payment instructions. */
+  result: OrderAcceptOut | null;
   error: PaymentError | null;
 };
 
@@ -72,10 +92,10 @@ type SendPaymentActions = {
   setRecipient: (recipient: RecipientDetails) => void;
   setAmount: (amount: AmountDetails) => void;
   setReference: (reference: string) => void;
-  setQuote: (quote: QuoteOrderOut | null) => void;
+  setQuote: (quote: OrderQuoteOut | null) => void;
   setQuoteLoading: (loading: boolean) => void;
   setQuoteError: (err: NormalizedQuoteError | null) => void;
-  setResult: (result: PaymentResult) => void;
+  setResult: (result: OrderAcceptOut) => void;
   setError: (error: PaymentError) => void;
   reset: () => void;
   resetForNewPayment: () => void;
@@ -100,6 +120,7 @@ export const useSendPaymentStore = create<SendPaymentStore>()((set) => ({
 
   setPhase: (phase) => set({ phase }),
   setRecipient: (recipient) => set({ recipient }),
+  // Editing the amount/destination invalidates any quote we'd already fetched.
   setAmount: (amount) => set({ amount, quote: null }),
   setReference: (reference) => set({ reference }),
   setQuote: (quote) => set({ quote }),

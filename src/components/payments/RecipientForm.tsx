@@ -19,27 +19,17 @@ const recipientSchema = z
     countryCode: z.string().min(2, "Select a country"),
     /** A CatalogMethodOption `optionKey`: "mobile_money" | "bank" | "rail:<type>". */
     methodKey: z.string().min(1, "Select a payment method"),
-    accountNumber: z.string().min(3, "Enter the account number"),
-    accountName: z.string().min(2, "Enter the account name"),
     bankCode: z.string().optional(),
-    bankPhoneNumber: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    // Every non-momo option (bank + offramp rails) is an account payout that
-    // needs a bank/provider selection and a notification phone.
+    // Every non-momo option (bank + offramp rails) is an account payout and
+    // needs the bank/provider we'll offramp to selected up front.
     if (data.methodKey && data.methodKey !== "mobile_money") {
       if (!data.bankCode || data.bankCode.trim().length < 2) {
         ctx.addIssue({
           code: "custom",
           path: ["bankCode"],
-          message: "Select or enter the bank.",
-        });
-      }
-      if (!data.bankPhoneNumber || data.bankPhoneNumber.trim().length < 6) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["bankPhoneNumber"],
-          message: "Enter a notification phone number.",
+          message: "Select the bank to send to.",
         });
       }
     }
@@ -57,10 +47,11 @@ export type RecipientSubmit = {
   /** Exact catalog option chosen — lets us restore the picker on back-nav. */
   methodOptionKey: string;
   methodLabel: string;
-  accountNumber: string;
-  accountName: string;
   bankCode?: string;
-  bankPhoneNumber?: string;
+  bankName?: string;
+  /** Aggregator institution id (CatalogProvider.id) for the chosen bank —
+   *  required by the OffRamp quote's `destination.networkId` for bank payouts. */
+  bankNetworkId?: string;
 };
 
 type RecipientFormProps = {
@@ -93,10 +84,7 @@ export default function RecipientForm({ initialValues, onSubmit }: RecipientForm
       email: initialValues?.email ?? "",
       countryCode: initialValues?.countryCode ?? "",
       methodKey: initialValues?.methodKey ?? "",
-      accountNumber: initialValues?.accountNumber ?? "",
-      accountName: initialValues?.accountName ?? "",
       bankCode: initialValues?.bankCode ?? "",
-      bankPhoneNumber: initialValues?.bankPhoneNumber ?? "",
     },
   });
 
@@ -130,15 +118,14 @@ export default function RecipientForm({ initialValues, onSubmit }: RecipientForm
   }, [selectedCountryCode, methods, setValue, getValues]);
 
   const isMomo = selectedMethod?.key === "momo";
-  const accountNumberLabel = isMomo
-    ? "Recipient phone number"
-    : "Recipient account number";
-  const accountNumberPlaceholder = isMomo ? "+254711111111" : "Account number";
 
   function submit(values: RecipientFormValues) {
     const country = countries.find((c) => c.code === values.countryCode);
     const method = methods.find((m) => m.optionKey === values.methodKey);
     if (!country || !method) return;
+    const bank = isMomo
+      ? null
+      : method.providers.find((p) => p.code === values.bankCode) ?? null;
     onSubmit({
       email: values.email,
       countryCode: country.code,
@@ -147,10 +134,9 @@ export default function RecipientForm({ initialValues, onSubmit }: RecipientForm
       methodKey: method.key,
       methodOptionKey: method.optionKey,
       methodLabel: method.label,
-      accountNumber: values.accountNumber,
-      accountName: values.accountName,
       bankCode: isMomo ? undefined : values.bankCode?.trim() || undefined,
-      bankPhoneNumber: isMomo ? undefined : values.bankPhoneNumber?.trim() || undefined,
+      bankName: bank?.name,
+      bankNetworkId: bank?.id,
     });
   }
 
@@ -219,69 +205,35 @@ export default function RecipientForm({ initialValues, onSubmit }: RecipientForm
           <FieldError message={errors.methodKey?.message} />
         </div>
 
-        <div>
-          <label className="mb-2 block text-xs text-[#4D556D]">{accountNumberLabel}</label>
-          <input
-            {...register("accountNumber")}
-            placeholder={accountNumberPlaceholder}
-            className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
-          />
-          <FieldError message={errors.accountNumber?.message} />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-xs text-[#4D556D]">Account name</label>
-          <input
-            {...register("accountName")}
-            placeholder="Name registered with the account"
-            className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
-          />
-          <FieldError message={errors.accountName?.message} />
-        </div>
-
         {selectedMethod && !isMomo ? (
-          <>
-            {selectedMethod.providers.length > 0 ? (
-              <div>
-                <Controller
-                  control={control}
-                  name="bankCode"
-                  render={({ field }) => (
-                    <BankProviderSelect
-                      providers={selectedMethod.providers}
-                      value={field.value ?? ""}
-                      onChange={(code) => field.onChange(code)}
-                    />
-                  )}
-                />
-                <FieldError message={errors.bankCode?.message} />
-              </div>
-            ) : (
-              <div>
-                <label className="mb-2 block text-xs text-[#4D556D]">
-                  Bank code (SWIFT/BIC or local)
-                </label>
-                <input
-                  {...register("bankCode")}
-                  placeholder="KCBLKENX"
-                  className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm uppercase text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
-                />
-                <FieldError message={errors.bankCode?.message} />
-              </div>
-            )}
-
+          selectedMethod.providers.length > 0 ? (
+            <div>
+              <Controller
+                control={control}
+                name="bankCode"
+                render={({ field }) => (
+                  <BankProviderSelect
+                    providers={selectedMethod.providers}
+                    value={field.value ?? ""}
+                    onChange={(code) => field.onChange(code)}
+                  />
+                )}
+              />
+              <FieldError message={errors.bankCode?.message} />
+            </div>
+          ) : (
             <div>
               <label className="mb-2 block text-xs text-[#4D556D]">
-                Notification phone number
+                Bank code (SWIFT/BIC or local)
               </label>
               <input
-                {...register("bankPhoneNumber")}
-                placeholder="+254711111111"
-                className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
+                {...register("bankCode")}
+                placeholder="KCBLKENX"
+                className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm uppercase text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
               />
-              <FieldError message={errors.bankPhoneNumber?.message} />
+              <FieldError message={errors.bankCode?.message} />
             </div>
-          </>
+          )
         ) : null}
 
         <button
