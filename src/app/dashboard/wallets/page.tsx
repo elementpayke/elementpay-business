@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ConsolidatedBalanceCard from "@/components/wallets/ConsolidatedBalanceCard";
 import CopyToast from "@/components/wallets/CopyToast";
+import IbanAccountsList from "@/components/wallets/IbanAccountsList";
 import ReceiveModal from "@/components/wallets/ReceiveModal";
 import WalletDetailsPanel from "@/components/wallets/WalletDetailsPanel";
 import WalletList from "@/components/wallets/WalletList";
@@ -190,14 +191,18 @@ export default function WalletsPage() {
 
       {showWallets ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-          <WalletList
-            onFundWallet={handleFundWallet}
-            onSendFromWallet={handleSendFromWallet}
-            onReceiveToWallet={(address) => {
-              setSelectedWallet(address);
-              setReceiveOpen(true);
-            }}
-          />
+          <div className="space-y-6">
+            <WalletList
+              onFundWallet={handleFundWallet}
+              onSendFromWallet={handleSendFromWallet}
+              onReceiveToWallet={(address) => {
+                setSelectedWallet(address);
+                setReceiveOpen(true);
+              }}
+            />
+
+            <IbanAccountsList />
+          </div>
 
           <WalletDetailsPanel wallet={selectedWallet} />
         </div>
