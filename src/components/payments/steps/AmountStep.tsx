@@ -1,19 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
 import { useSendPaymentStore } from "@/stores/sendPaymentStore";
 import { useSelectedWallet } from "@/lib/wallets/useSelectedWallet";
 import { SUPPORTED_TOKENS } from "@/lib/wallets/supportedTokens";
 import { shortAddress } from "@/lib/wallets/wallet-selection";
 import { COUNTRIES } from "@/lib/countries";
-import { validatePhoneForCountry } from "@/lib/phone";
 import { useExchangeRates } from "@/lib/dashboard/hooks";
 
 const USDC_BASE = SUPPORTED_TOKENS.find((t) => t.symbol === "USDC" && t.chain === "Base")!;
-const MIN_FIAT_AMOUNT = 1;
-/** Account numbers: 5–34 chars, alphanumeric (covers local accounts + IBAN). */
-const BANK_ACCOUNT_RE = /^[A-Za-z0-9]{5,34}$/;
+// Client-side amount/recipient validation is intentionally minimal while we
+// test offramp end-to-end against the live backend. The backend is the source
+// of truth for amount limits, phone-number format, IBAN/account validity, etc.
+// Only enforce the bare minimum needed to build a structurally valid quote
+// payload (a paying wallet + a non-zero fiat amount).
 
 /**
  * Normalize a raw phone input to E.164 using the recipient corridor's dial
@@ -48,7 +49,6 @@ export default function AmountStep() {
   const { selectedWallet } = useSelectedWallet();
 
   const walletAddress = selectedWallet?.address ?? "";
-  const availableUsd = selectedWallet?.balance.usd ?? 0;
 
   const receiveCurrency = recipient?.receiveCurrency ?? "KES";
   const receiveCountry = recipient?.countryCode ?? "KE";
@@ -80,46 +80,24 @@ export default function AmountStep() {
 
   const missingWallet = !walletAddress;
   const invalidAmount = !(fiatAmount > 0);
-  const belowMin = fiatAmount > 0 && fiatAmount < MIN_FIAT_AMOUNT;
-  const noBalance = useMemo(() => availableUsd <= 0, [availableUsd]);
 
   const accountNumberLabel = isMomo
     ? "Recipient phone number"
     : "Recipient account number";
   const accountNumberPlaceholder = isMomo ? "0712 345 678" : "Account number";
 
-  const accountNameValid = accountName.trim().length >= 2;
-
-  // Corridor-specific destination validation (gates the continue button):
-  // - momo: the aggregator requires a phone valid for the recipient country's
-  //   numbering rules (forwarded as E.164). A bad number guarantees a failed
-  //   payout, so this is blocking — not a warning.
-  // - bank: a plausible account number (5–34 alphanumerics; covers local
-  //   account numbers and IBANs). The receiving institution itself was chosen
-  //   on step 1 and rides along as `destination.networkId`.
-  const phoneCheck = isMomo
-    ? validatePhoneForCountry(accountNumber, receiveCountry)
-    : null;
-  const accountNumberValid = isMomo
-    ? Boolean(phoneCheck?.isValid)
-    : BANK_ACCOUNT_RE.test(accountNumber.replace(/\s+/g, ""));
-  const showPhoneError = Boolean(
-    isMomo && accountNumber.trim() && phoneCheck && !phoneCheck.isValid,
-  );
-  const showBankError = Boolean(!isMomo && accountNumber.trim() && !accountNumberValid);
-
-  const disableContinue =
-    invalidAmount ||
-    belowMin ||
-    missingWallet ||
-    noBalance ||
-    !accountNameValid ||
-    !accountNumberValid;
+  // Validation gates (min amount, balance, account-name length, momo phone
+  // E.164, bank-account regex) removed for offramp testing — backend is the
+  // source of truth. Continue only requires a wallet to pay from and a
+  // non-zero fiat amount so the quote payload is structurally valid.
+  const disableContinue = invalidAmount || missingWallet;
 
   function handleContinue() {
     if (disableContinue || !walletAddress) return;
+    // Still normalize momo numbers to E.164 best-effort so the payload matches
+    // what the aggregator expects, but don't gate on format here.
     const normalizedNumber = isMomo
-      ? phoneCheck?.e164 ?? toE164(accountNumber, receiveCountry)
+      ? toE164(accountNumber, receiveCountry)
       : accountNumber.replace(/\s+/g, "");
     setAmount({
       sourceWalletAddress: walletAddress,
@@ -208,17 +186,6 @@ export default function AmountStep() {
         </div>
       </div>
 
-      {noBalance ? (
-        <p className="text-xs text-[#E35D5B]">
-          Your wallet has no USDC balance. Fund the wallet before sending a payment.
-        </p>
-      ) : null}
-      {belowMin ? (
-        <p className="text-xs text-[#E35D5B]">
-          Minimum payment is {MIN_FIAT_AMOUNT} {receiveCurrency}.
-        </p>
-      ) : null}
-
       {/* Destination account details (depend on the rail chosen in step 1) */}
       <div className="space-y-4 rounded-xl border border-[#ECEEF4] bg-white p-4">
         <p className="text-xs font-semibold text-[#1F2640]">
@@ -245,25 +212,8 @@ export default function AmountStep() {
             value={accountNumber}
             onChange={(e) => setAccountNumber(e.target.value)}
             placeholder={accountNumberPlaceholder}
-            className={`h-12 w-full rounded-xl border bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:bg-white ${
-              showPhoneError || showBankError
-                ? "border-[#E35D5B] focus:border-[#E35D5B]"
-                : "border-[#ECEEF4] focus:border-primary-300"
-            }`}
+            className="h-12 w-full rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] px-4 text-sm text-[#1F2640] outline-none transition focus:border-primary-300 focus:bg-white"
           />
-          {showPhoneError ? (
-            <p className="mt-2 text-xs text-[#E35D5B]">
-              {phoneCheck?.message ??
-                "Enter a valid phone number for the selected country."}{" "}
-              Mobile money payouts need a valid number for {receiveCountry}.
-            </p>
-          ) : null}
-          {showBankError ? (
-            <p className="mt-2 text-xs text-[#E35D5B]">
-              Enter a valid account number (5–34 letters or digits, no spaces or
-              symbols).
-            </p>
-          ) : null}
         </div>
       </div>
 

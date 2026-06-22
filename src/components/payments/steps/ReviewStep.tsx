@@ -14,6 +14,20 @@ import { fetchExchangeRates } from "@/lib/dashboard/api";
 import { normalizeOrderError } from "@/lib/orderErrors";
 import QuoteErrorPanel from "@/components/orders/QuoteErrorPanel";
 import PinStep from "@/components/payments/steps/PinStep";
+import { useAuth } from "@/lib/AuthContext";
+
+// Yellow Card's OffRamp corridor (KE, NG, ZA, etc.) only accepts Polygon USDT
+// in the partner-quote contract — see MBOKA_PARTNER_ORDER_INTEGRATION.md.
+// The dashboard's source wallet may hold Base USDC, but the quote+accept call
+// must use Polygon USDT or the aggregator 400s on corridor/asset mismatch.
+// TODO: once backend confirms multi-asset OffRamp support, derive this from
+// the source wallet instead of hardcoding.
+const OFFRAMP_ASSET_TOKEN = "0xc2132d05d31c914a87c6611c10748aeb04b58e8f";
+
+// Discovery probe amount when public FX is unavailable. 1 USDC sits below
+// most local-corridor minimums (≈130 KES on KE), so the aggregator 400s.
+// 10 ≈ $10 ≈ 1,300 KES which clears the typical minimum.
+const PROBE_CRYPTO_AMOUNT = "10";
 
 function formatNumber(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "—";
@@ -54,6 +68,7 @@ export default function ReviewStep() {
   const setQuoteError = useSendPaymentStore((s) => s.setQuoteError);
 
   const { wallets } = useSelectedWallet();
+  const { user, business } = useAuth();
   const [pinOpen, setPinOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const inflightRef = useRef(false);
@@ -74,13 +89,19 @@ export default function ReviewStep() {
     setQuoteError(null);
     try {
       // OffRamp quote: crypto in, fiat out. Destination is the account the
-      // user entered on step 2; sender PII is filled from the business's KYB
-      // on file. For bank payouts `networkId` (the institution id chosen on
-      // step 1) tells the aggregator which bank to route to.
+      // user entered on step 2; sender block is the authenticated business so
+      // the aggregator has a customer identity (Yellow Card OffRamp expects
+      // one even when KYB fills the rest). For bank payouts `networkId` (the
+      // institution id chosen on step 1) tells the aggregator which bank to
+      // route to.
+      //
+      // NOTE: the asset is forced to Polygon USDT — the only OffRamp asset
+      // Yellow Card's KE/NG/etc. corridors accept on the partner contract.
+      // See OFFRAMP_ASSET_TOKEN above.
       const quoteFor = (cryptoAmount: string): Promise<OrderQuoteOut> => {
         const payload: OrderQuoteOffRampIn = {
           order_type: "OffRamp",
-          token: amount.tokenAddress,
+          token: OFFRAMP_ASSET_TOKEN,
           currency: amount.receiveCurrency,
           country: recipient.countryCode,
           crypto_amount: cryptoAmount,
@@ -93,6 +114,11 @@ export default function ReviewStep() {
               ? { networkId: recipient.bankNetworkId }
               : {}),
             countryCode: recipient.countryCode,
+          },
+          sender: {
+            name: business?.name ?? business?.legal_name ?? undefined,
+            country: business?.country ?? recipient.countryCode,
+            email: user?.email,
           },
         };
         return createOrderQuote(payload);
@@ -119,10 +145,18 @@ export default function ReviewStep() {
       }
 
       if (rate === null) {
-        const probe = await quoteFor("1");
+        const probe = await quoteFor(PROBE_CRYPTO_AMOUNT);
         const achieved = Number(probe.amounts.user_receives.amount);
         const indicative = Number(probe.amounts.rate ?? 0);
-        rate = achieved > 0 ? achieved : indicative > 0 ? indicative : null;
+        // achieved is user_receives for the probe crypto amount, so divide
+        // to get the per-unit rate.
+        const probeUnits = Number(PROBE_CRYPTO_AMOUNT);
+        rate =
+          achieved > 0 && probeUnits > 0
+            ? achieved / probeUnits
+            : indicative > 0
+              ? indicative
+              : null;
         if (rate === null) {
           throw new Error(
             "Couldn't determine the exchange rate for this corridor. Please try again.",
