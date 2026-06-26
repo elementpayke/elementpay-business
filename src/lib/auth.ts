@@ -168,7 +168,7 @@ export function getCurrentUser(): UserResponse | null {
 // ---- Auth endpoints ----------------------------------------------------
 
 export async function registerBusiness(data: BusinessSignupSchema): Promise<SignupBusinessResult> {
-  const res = await fetch(`${API_BASE}/api/auth/businesses/signup`, {
+  const res = await fetch(`${API_BASE}/api/auth/users/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -177,7 +177,7 @@ export async function registerBusiness(data: BusinessSignupSchema): Promise<Sign
 }
 
 export async function login(data: LoginSchema): Promise<Token> {
-  const res = await fetch(`${API_BASE}/api/auth/businesses/login`, {
+  const res = await fetch(`${API_BASE}/api/auth/users/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
