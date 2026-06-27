@@ -62,6 +62,37 @@ export type PublicLink = {
   public_pdf_url: string;
 };
 
+type InvoiceDraftLineItemBody = {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+};
+
+export type InvoiceDraftSupportingDocumentBody = {
+  id: string;
+  name: string;
+  size_bytes: number;
+  mime_type: string;
+};
+
+export type InvoiceDraftPayloadBody = {
+  line_items: InvoiceDraftLineItemBody[];
+  supporting_documents: InvoiceDraftSupportingDocumentBody[];
+  currency: string;
+  notes: string;
+  client_name: string;
+  client_email: string;
+  client_phone: string;
+  details: InvoiceCreatePayload;
+};
+
+export type InvoiceDraftRequestBody = {
+  title: string | null;
+  due_date: string | null;
+  payload: InvoiceDraftPayloadBody;
+};
+
 /**
  * Build the backend draft payload from the rich frontend invoice payload.
  *
@@ -73,7 +104,7 @@ export type PublicLink = {
  */
 function buildDraftPayload(
   payload: InvoiceCreatePayload,
-): Record<string, unknown> {
+): InvoiceDraftPayloadBody {
   const lineItems = payload.lineItems.map((item) => ({
     description: item.description,
     quantity: item.quantity,
@@ -99,7 +130,9 @@ function buildDraftPayload(
   };
 }
 
-export function buildDraftRequestBody(payload: InvoiceCreatePayload) {
+export function buildDraftRequestBody(
+  payload: InvoiceCreatePayload,
+): InvoiceDraftRequestBody {
   return {
     title: payload.invoice.title || null,
     due_date: payload.invoice.dueDate || null,
