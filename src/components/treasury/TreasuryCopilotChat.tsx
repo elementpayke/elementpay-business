@@ -3,20 +3,40 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Loader2, Paperclip, Send, Sparkles, X } from "lucide-react";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
+import AssistantMessageBubble from "@/components/treasury/AssistantMessageBubble";
+import InvoiceIntakeCard from "@/components/treasury/InvoiceIntakeCard";
 import PendingActionCard, {
   type PendingAction,
 } from "@/components/treasury/PendingActionCard";
+import UserMessageBubble from "@/components/treasury/UserMessageBubble";
 import {
   treasuryCopilotChat,
   treasuryCopilotConfirm,
   type TreasuryChatMessage,
 } from "@/lib/treasury/api";
 import { formatAssistantMessage } from "@/lib/treasury/formatAssistantMessage";
+import {
+  buildInvoiceIntakeAssistantMessage,
+  parseInvoiceIntakeRequest,
+  type InvoiceIntakeDraft,
+} from "@/lib/treasury/invoiceIntake";
 
 type ChatMessage = TreasuryChatMessage;
 
+type UiChatMessage = ChatMessage & {
+  timestamp?: string;
+  displayContent?: string;
+};
+
 const TEXT_EXTENSIONS = /\.(txt|csv|md|json)$/i;
 const MAX_DOC_CHARS = 24_000;
+
+function messageTimestamp(date = new Date()): string {
+  return date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 async function readDocumentFile(file: File): Promise<{ name: string; text: string }> {
   if (TEXT_EXTENSIONS.test(file.name)) {
@@ -29,11 +49,12 @@ async function readDocumentFile(file: File): Promise<{ name: string; text: strin
 }
 
 export default function TreasuryCopilotChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState<UiChatMessage[]>([
     {
       role: "assistant",
       content:
         "I'm ElementPay's financial assistant. I can help with your account — balances, contacts, invoices, invoice drafts, payout previews, transactions, and payments.\n\nI use your authenticated ElementPay account context, so I won't ask for business details that are already on file. Anything that moves money or changes records waits for your confirmation.\n\nTry: \"What's our treasury balance?\" or upload a supplier invoice CSV and say \"Create drafts from this.\"",
+      timestamp: messageTimestamp(),
     },
   ]);
   const [input, setInput] = useState("");
@@ -41,6 +62,9 @@ export default function TreasuryCopilotChat() {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
+  const [invoiceIntake, setInvoiceIntake] = useState<InvoiceIntakeDraft | null>(
+    null,
+  );
   const [attachment, setAttachment] = useState<{ name: string; text: string } | null>(
     null,
   );
@@ -50,7 +74,7 @@ export default function TreasuryCopilotChat() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, loading, pendingActions, error]);
+  }, [messages, loading, pendingActions, invoiceIntake, error]);
 
   const callChat = useCallback(
     async (messages: ChatMessage[], document?: { name: string; text: string } | null) =>
@@ -67,47 +91,114 @@ export default function TreasuryCopilotChat() {
     [],
   );
 
+  const submitUserMessage = useCallback(
+    async (
+      text: string,
+      options: {
+        displayContent?: string;
+        document?: { name: string; text: string } | null;
+      } = {},
+    ) => {
+      const userMsg: UiChatMessage = {
+        role: "user",
+        content: text,
+        timestamp: messageTimestamp(),
+        ...(options.displayContent === undefined
+          ? {}
+          : { displayContent: options.displayContent }),
+      };
+      const historyUserMsg: ChatMessage = { role: "user", content: text };
+      const nextHistory = [...historyRef.current, historyUserMsg];
+      const selectedDocument = "document" in options ? options.document : attachment;
+
+      historyRef.current = nextHistory;
+      setMessages((m) => [...m, userMsg]);
+      setInput("");
+      setLoading(true);
+      setError(null);
+      setPendingActions([]);
+
+      try {
+        const data = await callChat(nextHistory, selectedDocument);
+        const assistantMsg: UiChatMessage = {
+          role: "assistant",
+          content: formatAssistantMessage(data.reply || "(no response)"),
+          timestamp: messageTimestamp(),
+        };
+        if (Array.isArray(data.messages)) {
+          historyRef.current = data.messages
+            .filter(
+              (m: { role: string }) => m.role === "user" || m.role === "assistant",
+            )
+            .map((m: ChatMessage) =>
+              m.role === "assistant"
+                ? { ...m, content: formatAssistantMessage(m.content) }
+                : m,
+            ) as ChatMessage[];
+        } else {
+          historyRef.current = [
+            ...nextHistory,
+            { role: assistantMsg.role, content: assistantMsg.content },
+          ];
+        }
+        setMessages((m) => [...m, assistantMsg]);
+        if (Array.isArray(data.pending_actions) && data.pending_actions.length > 0) {
+          setPendingActions(data.pending_actions as PendingAction[]);
+        }
+        setAttachment(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Request failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [attachment, callChat],
+  );
+
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
 
-    const userMsg: ChatMessage = { role: "user", content: text };
-    const nextHistory = [...historyRef.current, userMsg];
-    historyRef.current = nextHistory;
-    setMessages((m) => [...m, userMsg]);
-    setInput("");
-    setLoading(true);
-    setError(null);
-    setPendingActions([]);
+    const intakeDraft = parseInvoiceIntakeRequest(text);
 
-    try {
-      const data = await callChat(nextHistory, attachment);
-      const assistantMsg: ChatMessage = {
-        role: "assistant",
-        content: formatAssistantMessage(data.reply || "(no response)"),
+    if (intakeDraft) {
+      const userMsg: UiChatMessage = {
+        role: "user",
+        content: text,
+        timestamp: messageTimestamp(),
       };
-      if (Array.isArray(data.messages)) {
-        historyRef.current = data.messages
-          .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
-          .map((m: ChatMessage) =>
-            m.role === "assistant"
-              ? { ...m, content: formatAssistantMessage(m.content) }
-              : m,
-          ) as ChatMessage[];
-      } else {
-        historyRef.current = [...nextHistory, assistantMsg];
-      }
-      setMessages((m) => [...m, assistantMsg]);
-      if (Array.isArray(data.pending_actions) && data.pending_actions.length > 0) {
-        setPendingActions(data.pending_actions as PendingAction[]);
-      }
-      setAttachment(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed");
-    } finally {
-      setLoading(false);
+      const assistantMsg: UiChatMessage = {
+        role: "assistant",
+        content: buildInvoiceIntakeAssistantMessage(intakeDraft),
+        timestamp: messageTimestamp(),
+      };
+      const historyUserMsg: ChatMessage = { role: "user", content: text };
+
+      historyRef.current = [...historyRef.current, historyUserMsg];
+      setMessages((m) => [...m, userMsg, assistantMsg]);
+      setInvoiceIntake(intakeDraft);
+      setInput("");
+      setError(null);
+      setPendingActions([]);
+      return;
     }
-  }, [input, loading, attachment, callChat]);
+
+    await submitUserMessage(text);
+  }, [input, loading, submitUserMessage]);
+
+  const submitInvoiceIntake = useCallback(
+    (message: string) => {
+      const draft = invoiceIntake;
+      setInvoiceIntake(null);
+      void submitUserMessage(message, {
+        displayContent: draft
+          ? `Submitted invoice details for ${draft.clientName}.`
+          : "Submitted invoice details.",
+        document: null,
+      });
+    },
+    [invoiceIntake, submitUserMessage],
+  );
 
   const confirmAction = useCallback(
     async (action: PendingAction) => {
@@ -115,7 +206,7 @@ export default function TreasuryCopilotChat() {
       setError(null);
       try {
         const data = await callConfirm(action);
-        const assistantMsg: ChatMessage = {
+        const assistantMsg: UiChatMessage = {
           role: "assistant",
           content: formatAssistantMessage(
             data.reply +
@@ -123,8 +214,12 @@ export default function TreasuryCopilotChat() {
                 ? `\n\n\`\`\`json\n${JSON.stringify(data.confirm_result, null, 2)}\n\`\`\``
                 : ""),
           ),
+          timestamp: messageTimestamp(),
         };
-        historyRef.current = [...historyRef.current, assistantMsg];
+        historyRef.current = [
+          ...historyRef.current,
+          { role: assistantMsg.role, content: assistantMsg.content },
+        ];
         setMessages((m) => [...m, assistantMsg]);
         setPendingActions((prev) => prev.filter((a) => a.action_id !== action.action_id));
       } catch (err) {
@@ -166,27 +261,28 @@ export default function TreasuryCopilotChat() {
       <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
         {messages.map((m, i) =>
           m.role === "user" ? (
-            <div key={`${m.role}-${i}`} className="ml-8 flex justify-end">
-              <div className="max-w-[85%] rounded-2xl rounded-br-md bg-primary-500 px-4 py-3 text-sm text-white">
-                <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
-              </div>
-            </div>
+            <UserMessageBubble
+              key={`${m.role}-${i}`}
+              content={m.displayContent ?? m.content}
+              timestamp={m.timestamp}
+            />
           ) : (
-            <div key={`${m.role}-${i}`} className="mr-4 flex gap-2.5">
-              <span
-                className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-600"
-                aria-hidden
-              >
-                <Bot className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 max-w-[85%] rounded-2xl rounded-bl-md bg-[#F4F6FB] px-4 py-3 text-sm text-[#1D243C]">
-                <p className="whitespace-pre-wrap leading-relaxed">
-                  {formatAssistantMessage(m.content)}
-                </p>
-              </div>
-            </div>
+            <AssistantMessageBubble
+              key={`${m.role}-${i}`}
+              content={m.content}
+              timestamp={m.timestamp}
+            />
           ),
         )}
+
+        {invoiceIntake ? (
+          <InvoiceIntakeCard
+            key={`${invoiceIntake.clientName}-${invoiceIntake.amount}-${invoiceIntake.currency}`}
+            draft={invoiceIntake}
+            disabled={loading}
+            onSubmit={submitInvoiceIntake}
+          />
+        ) : null}
 
         {pendingActions.map((action) => (
           <PendingActionCard
