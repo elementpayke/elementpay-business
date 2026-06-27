@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { dashboardNavGroups, isDashboardNavItemActive } from "@/components/dashboard/dashboardNav";
+import {
+  dashboardNavGroups,
+  getDashboardNavItemActiveState,
+  isDashboardNavItemActive,
+} from "@/components/dashboard/dashboardNav";
 
 describe("dashboard navigation model", () => {
   it("groups primary dashboard routes for the left sidebar", () => {
@@ -12,6 +16,22 @@ describe("dashboard navigation model", () => {
     expect(dashboardNavGroups.flatMap((group) => group.items.map((item) => item.href))).toContain(
       "/dashboard/invoices/create",
     );
+  });
+
+  it("puts Agents under Business tools with Treasury AI as its first child", () => {
+    const mainGroup = dashboardNavGroups.find((group) => group.label === "Main");
+    const businessToolsGroup = dashboardNavGroups.find((group) => group.label === "Business tools");
+
+    expect(mainGroup?.items.map((item) => item.label)).toEqual(["Overview", "Transactions", "Wallets"]);
+
+    const agentsItem = businessToolsGroup?.items.find((item) => item.label === "Agents");
+    expect(agentsItem).toBeDefined();
+    expect(agentsItem?.href).toBe("/dashboard/treasury-copilot");
+    expect(agentsItem?.children?.map((item) => item.label)).toEqual(["Treasury AI"]);
+    expect(agentsItem?.children?.[0]).toMatchObject({
+      href: "/dashboard/treasury-copilot",
+      badge: "Beta",
+    });
   });
 
   it("uses exact matching for overview and prefix matching for nested sections", () => {
@@ -29,5 +49,23 @@ describe("dashboard navigation model", () => {
 
     expect(invoicingItem).toBeDefined();
     expect(isDashboardNavItemActive(invoicingItem!, "/dashboard/invoices/preview")).toBe(true);
+  });
+
+  it("marks Agents active when Treasury AI is active", () => {
+    const agentsItem = dashboardNavGroups
+      .find((group) => group.label === "Business tools")
+      ?.items.find((item) => item.label === "Agents");
+
+    expect(agentsItem).toBeDefined();
+    expect(getDashboardNavItemActiveState(agentsItem!, "/dashboard/treasury-copilot")).toEqual({
+      self: true,
+      child: true,
+      active: true,
+    });
+    expect(getDashboardNavItemActiveState(agentsItem!, "/dashboard/treasury-copilot/session")).toEqual({
+      self: true,
+      child: true,
+      active: true,
+    });
   });
 });

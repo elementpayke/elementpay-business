@@ -1,6 +1,7 @@
 import {
   ArrowLeftRight,
   Banknote,
+  Bot,
   Code2,
   FileText,
   Headphones,
@@ -21,6 +22,7 @@ export type DashboardNavItem = {
   activePrefix?: string;
   badge?: string;
   icon: ComponentType<{ className?: string }>;
+  children?: DashboardNavItem[];
 };
 
 export type DashboardNavGroup = {
@@ -28,12 +30,17 @@ export type DashboardNavGroup = {
   items: DashboardNavItem[];
 };
 
+export type DashboardNavItemActiveState = {
+  self: boolean;
+  child: boolean;
+  active: boolean;
+};
+
 export const dashboardNavGroups: DashboardNavGroup[] = [
   {
     label: "Main",
     items: [
       { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-      { label: "Treasury AI", href: "/dashboard/treasury-copilot", badge: "Beta", icon: Sparkles },
       { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
       { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
     ],
@@ -49,6 +56,19 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
   {
     label: "Business tools",
     items: [
+      {
+        label: "Agents",
+        href: "/dashboard/treasury-copilot",
+        icon: Bot,
+        children: [
+          {
+            label: "Treasury AI",
+            href: "/dashboard/treasury-copilot",
+            badge: "Beta",
+            icon: Sparkles,
+          },
+        ],
+      },
       {
         label: "Invoicing",
         href: "/dashboard/invoices/create",
@@ -80,4 +100,18 @@ export function isDashboardNavItemActive(
 
   const prefix = activePrefix ?? href;
   return pathname === href || pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+export function getDashboardNavItemActiveState(
+  item: DashboardNavItem,
+  pathname: string,
+): DashboardNavItemActiveState {
+  const self = isDashboardNavItemActive(item, pathname);
+  const child = item.children?.some((childItem) => isDashboardNavItemActive(childItem, pathname)) ?? false;
+
+  return {
+    self,
+    child,
+    active: self || child,
+  };
 }
