@@ -23,4 +23,14 @@ describe("buildAssistantMessageBlocks", () => {
       { type: "paragraph", text: "Second line." },
     ]);
   });
+
+  it.each([
+    ["bold", "**Invoice Number: INV-1"],
+    ["underline", "__Invoice Number: INV-1"],
+    ["inline code", "`Invoice Number: INV-1"],
+  ])("strips unbalanced %s markers from paragraphs", (_label, content) => {
+    expect(buildAssistantMessageBlocks(content)).toEqual([
+      { type: "paragraph", text: "Invoice Number: INV-1" },
+    ]);
+  });
 });

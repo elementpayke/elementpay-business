@@ -11,6 +11,7 @@ function stripDisplayMarkdown(text: string): string {
     .replace(/^#{1,6}\s*/, "")
     .replace(/(\*\*|__)(.*?)\1/g, "$2")
     .replace(/`([^`]*)`/g, "$1")
+    .replace(/\*\*|__|`/g, "")
     .trim();
 }
 
