@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildInvoiceIntakeFollowUpMessage,
   createEmptyInvoiceIntakeFields,
@@ -35,6 +35,12 @@ export default function InvoiceIntakeCard({
     createEmptyInvoiceIntakeFields(),
   );
   const [errors, setErrors] = useState<InvoiceIntakeFieldErrors>({});
+  const inputRefs = useRef<
+    Partial<Record<InvoiceIntakeFieldName, HTMLInputElement | null>>
+  >({});
+  const lastDraftResetKeyRef = useRef(
+    `${draft.clientName}\u0000${draft.amount}\u0000${draft.currency}`,
+  );
 
   const fieldConfigs = useMemo<IntakeFieldConfig[]>(
     () => [
@@ -79,6 +85,23 @@ export default function InvoiceIntakeCard({
     [draft.clientName],
   );
 
+  useEffect(() => {
+    const nextDraftResetKey = `${draft.clientName}\u0000${draft.amount}\u0000${draft.currency}`;
+
+    if (lastDraftResetKeyRef.current === nextDraftResetKey) {
+      return;
+    }
+
+    lastDraftResetKeyRef.current = nextDraftResetKey;
+
+    const frame = window.requestAnimationFrame(() => {
+      setFields(createEmptyInvoiceIntakeFields());
+      setErrors({});
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [draft.clientName, draft.amount, draft.currency]);
+
   function updateField(name: InvoiceIntakeFieldName, value: string) {
     setFields((currentFields) => ({
       ...currentFields,
@@ -107,6 +130,15 @@ export default function InvoiceIntakeCard({
 
     if (!validation.valid) {
       setErrors(validation.errors);
+
+      const firstInvalidField = fieldConfigs.find(
+        (field) => validation.errors[field.name],
+      );
+
+      if (firstInvalidField) {
+        inputRefs.current[firstInvalidField.name]?.focus();
+      }
+
       return;
     }
 
@@ -115,7 +147,7 @@ export default function InvoiceIntakeCard({
   }
 
   return (
-    <div className="ml-[42px] mr-4 max-w-[430px] rounded-2xl border border-[#E6EAF2] bg-[#F8FAFE] p-4 text-sm text-[#1D243C] shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
+    <div className="ml-[42px] mr-4 max-w-[430px] break-words rounded-2xl border border-[#E6EAF2] bg-[#F8FAFE] p-4 text-sm text-[#1D243C] shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
       <div>
         <h3 className="text-sm font-semibold text-[#171D32]">
           Invoice details for {draft.clientName}
@@ -142,6 +174,9 @@ export default function InvoiceIntakeCard({
               </label>
               <input
                 id={inputId}
+                ref={(element) => {
+                  inputRefs.current[field.name] = element;
+                }}
                 type={field.type ?? "text"}
                 value={fields[field.name]}
                 placeholder={field.placeholder}
@@ -157,7 +192,11 @@ export default function InvoiceIntakeCard({
                 }`}
               />
               {error ? (
-                <p id={errorId} className="mt-1.5 text-xs text-[#B23A4E]">
+                <p
+                  id={errorId}
+                  className="mt-1.5 text-xs text-[#B23A4E]"
+                  role="alert"
+                >
                   {error}
                 </p>
               ) : null}

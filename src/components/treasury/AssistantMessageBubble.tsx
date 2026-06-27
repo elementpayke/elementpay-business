@@ -35,8 +35,8 @@ export default function AssistantMessageBubble({
                   key={`${block.type}-${index}`}
                   className="list-decimal space-y-1 pl-5 leading-relaxed"
                 >
-                  {block.items.map((item) => (
-                    <li key={item}>{item}</li>
+                  {block.items.map((item, itemIndex) => (
+                    <li key={`${item}-${itemIndex}`}>{item}</li>
                   ))}
                 </ol>
               ),
