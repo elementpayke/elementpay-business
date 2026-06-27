@@ -9,6 +9,7 @@ Improve the ElementPay business dashboard UX by moving primary dashboard navigat
 - Navigation: full left sidebar on desktop.
 - Invoice creation: guided editor with a right-side live preview panel.
 - Development method: test-driven development for implementation.
+- Navigation refinement: `Agents` lives under `Business tools`, and `Treasury AI` is the first agent nested inside it.
 
 ## Navigation Design
 
@@ -20,12 +21,18 @@ The dashboard shell will move from the current two-row top navigation (`Dashboar
 
 The sidebar will group routes by workflow:
 
-- Main: Overview, Treasury AI, Transactions, Wallets.
+- Main: Overview, Transactions, Wallets.
 - Money movement: Send Payment, Bulk Payment, Deposit Money.
-- Business tools: Invoicing, Reports, Verification, Developer.
+- Business tools: Agents, Invoicing, Reports, Verification, Developer.
 - Support: Contact Support, Settings.
 
-Active route state will be based on `usePathname`, preserving the current exact-match behavior for `/dashboard` and prefix matching for nested dashboard routes.
+The `Agents` entry is a parent row inside `Business tools`. For this pass it contains one visible child:
+
+- Treasury AI: keeps the existing `/dashboard/treasury-copilot` route and `Beta` badge.
+
+This is an information-architecture change, not a route migration. The existing Treasury AI route remains valid so current links and API routes do not need to change. The sidebar should mark `Agents` and `Treasury AI` active when the current path is `/dashboard/treasury-copilot` or a nested Treasury AI path.
+
+Active route state will be based on `usePathname`, preserving the current exact-match behavior for `/dashboard` and prefix matching for nested dashboard routes. Nested nav children should also contribute active state to their parent.
 
 ## Invoice Creation Design
 
@@ -46,7 +53,7 @@ The editor should feel closer to the reference than the current long form:
 
 New or changed components:
 
-- `DashboardSidebar`: primary route groups, active state, support/settings placement, desktop layout.
+- `DashboardSidebar`: primary route groups, nested Agents/Treasury AI rendering, active state, support/settings placement, desktop layout.
 - `DashboardNavbar`: utility bar only, no product route navigation.
 - `DashboardLayout`: desktop sidebar plus content shell; mobile drawer behavior.
 - `InvoiceWorkspace`: create-page composition for editor, preview panel, and sticky actions.
@@ -95,6 +102,7 @@ Supporting document metadata is JSON-only for this pass. File metadata will be s
 - Unsupported file types or oversize supporting documents show inline drop-zone errors.
 - Backend schema validation accepts valid supporting-document metadata and rejects invalid metadata without requiring file upload handling.
 - Mobile drawer state must not block route changes; selecting a sidebar route should close the drawer.
+- Nested sidebar items must remain keyboard-accessible and should not require hovering to reveal Treasury AI on mobile or desktop.
 
 ## Testing Strategy
 
@@ -109,6 +117,7 @@ Implementation will use test-driven development:
 Targeted test coverage:
 
 - Sidebar route active-state logic and grouped route data.
+- Nested Agents route data and parent active-state behavior when Treasury AI is active.
 - Invoice totals still update as line items, discounts, tax, and shipping change.
 - Supporting document metadata add/remove behavior.
 - Create invoice save/proceed actions preserve existing validation and API call behavior.
