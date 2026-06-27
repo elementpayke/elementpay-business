@@ -40,7 +40,7 @@ The editor should feel closer to the reference than the current long form:
 - Use compact sections and fewer visible borders.
 - Keep the live preview visible on desktop while editing.
 - Collapse to a single-column flow on tablet/mobile, with preview available below the editor or through tabs.
-- Add a supporting-documents drop zone UI for optional attachments. Attachments will be represented in local invoice draft state for this UX pass; backend upload/persistence is out of scope.
+- Add a supporting-documents drop zone UI for optional attachments. Attachment metadata will be represented in local invoice draft state and sent to the Mboka backend as invoice payload JSON. Backend file upload/storage is out of scope.
 
 ## Components
 
@@ -62,6 +62,12 @@ Existing components to reuse:
 - Existing `InvoicePreview` for the PDF preview tab, adjusted only as needed for the narrower preview rail.
 - Existing send modal and preview route flow.
 
+Backend repo:
+
+- Mboka backend work happens in `/home/joe/kazi/company/ELEMENTPAY/Mboka-Backend`.
+- The backend will preserve optional `supporting_documents` metadata inside invoice draft and issued invoice payloads.
+- The backend will not accept file binaries or provide attachment download URLs in this pass.
+
 ## Data Flow
 
 Invoice edits continue to update the Zustand invoice draft. The live preview reads from the same store, so edits render immediately without an extra persistence step.
@@ -80,13 +86,14 @@ Proceeding to preview/send keeps the current behavior:
 2. Save the latest draft snapshot.
 3. Route to the existing invoice preview/send flow.
 
-Supporting documents are UI-only for this pass. File metadata will be stored in the invoice store, but files must not be sent to the existing invoice API.
+Supporting document metadata is JSON-only for this pass. File metadata will be stored in the invoice store and sent under the invoice payload, but file bytes must not be sent to the existing invoice API.
 
 ## Error Handling
 
 - Draft validation errors appear near the sticky actions and should point users to the first missing requirement.
 - Save/proceed failures retain the current backend error message behavior.
 - Unsupported file types or oversize supporting documents show inline drop-zone errors.
+- Backend schema validation accepts valid supporting-document metadata and rejects invalid metadata without requiring file upload handling.
 - Mobile drawer state must not block route changes; selecting a sidebar route should close the drawer.
 
 ## Testing Strategy
@@ -106,10 +113,11 @@ Targeted test coverage:
 - Supporting document metadata add/remove behavior.
 - Create invoice save/proceed actions preserve existing validation and API call behavior.
 - Preview tabs render the correct mode and preserve draft state.
+- Backend invoice draft create/update/issue preserves `supporting_documents` metadata in returned payloads.
 
 ## Out Of Scope
 
-- Backend attachment upload API.
+- Backend attachment file upload/storage API.
 - New invoice email delivery backend behavior.
 - Replacing the existing issued invoice/send modal flow.
 - Reworking non-dashboard public landing navigation.
