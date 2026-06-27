@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { Mail, MonitorSmartphone } from "lucide-react";
 import InvoicePreview from "@/components/invoices/InvoicePreview";
 import {
@@ -94,6 +94,29 @@ export function resolveInvoicePreviewTab(
   return invoicePreviewTabs.some((tab) => tab.id === next) ? (next as InvoicePreviewTabId) : current;
 }
 
+export function resolveInvoicePreviewKeyboardTab(
+  current: InvoicePreviewTabId,
+  key: string,
+): InvoicePreviewTabId {
+  const currentIndex = invoicePreviewTabs.findIndex((tab) => tab.id === current);
+  const lastIndex = invoicePreviewTabs.length - 1;
+
+  if (currentIndex === -1) return current;
+
+  if (key === "ArrowRight" || key === "ArrowDown") {
+    return invoicePreviewTabs[(currentIndex + 1) % invoicePreviewTabs.length].id;
+  }
+
+  if (key === "ArrowLeft" || key === "ArrowUp") {
+    return invoicePreviewTabs[(currentIndex - 1 + invoicePreviewTabs.length) % invoicePreviewTabs.length].id;
+  }
+
+  if (key === "Home") return invoicePreviewTabs[0].id;
+  if (key === "End") return invoicePreviewTabs[lastIndex].id;
+
+  return current;
+}
+
 export function buildInvoicePreviewModel(
   draft: InvoiceDraft,
   activeTab: InvoicePreviewTabId = DEFAULT_INVOICE_PREVIEW_TAB,
@@ -160,8 +183,23 @@ export function buildInvoicePreviewModel(
 
 export default function InvoicePreviewTabs() {
   const [activeTab, setActiveTab] = useState<InvoicePreviewTabId>(DEFAULT_INVOICE_PREVIEW_TAB);
+  const tabRefs = useRef<Partial<Record<InvoicePreviewTabId, HTMLButtonElement | null>>>({});
   const draft = useInvoiceStore((s) => s.draft);
   const model = buildInvoicePreviewModel(draft, activeTab);
+
+  function selectTab(nextTab: InvoicePreviewTabId) {
+    setActiveTab((current) => resolveInvoicePreviewTab(current, nextTab));
+  }
+
+  function handleTabKeyDown(currentTab: InvoicePreviewTabId, event: KeyboardEvent<HTMLButtonElement>) {
+    const nextTab = resolveInvoicePreviewKeyboardTab(currentTab, event.key);
+
+    if (nextTab === currentTab) return;
+
+    event.preventDefault();
+    selectTab(nextTab);
+    tabRefs.current[nextTab]?.focus();
+  }
 
   return (
     <section className="min-w-0 rounded-xl border border-[#E8EBF3] bg-white">
@@ -177,7 +215,11 @@ export default function InvoicePreviewTabs() {
               aria-selected={active}
               aria-controls={getInvoicePreviewPanelId(tab.id)}
               tabIndex={active ? 0 : -1}
-              onClick={() => setActiveTab((current) => resolveInvoicePreviewTab(current, tab.id))}
+              ref={(element) => {
+                tabRefs.current[tab.id] = element;
+              }}
+              onClick={() => selectTab(tab.id)}
+              onKeyDown={(event) => handleTabKeyDown(tab.id, event)}
               className={`min-w-0 flex-1 rounded-lg px-2.5 py-2 text-xs font-semibold transition ${
                 active
                   ? "bg-primary-500 text-white"

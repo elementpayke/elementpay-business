@@ -5,6 +5,7 @@ import {
   getInvoicePreviewPanelId,
   getInvoicePreviewTabId,
   invoicePreviewTabs,
+  resolveInvoicePreviewKeyboardTab,
   resolveInvoicePreviewTab,
 } from "@/components/invoices/InvoicePreviewTabs";
 import type { InvoiceDraft } from "@/stores/invoiceStore";
@@ -168,5 +169,29 @@ describe("resolveInvoicePreviewTab", () => {
     expect(resolveInvoicePreviewTab("pdf", "payer")).toBe("payer");
     expect(resolveInvoicePreviewTab("payer", "email")).toBe("email");
     expect(resolveInvoicePreviewTab("email", "missing")).toBe("email");
+  });
+});
+
+describe("resolveInvoicePreviewKeyboardTab", () => {
+  it("moves to the next tab for ArrowRight and ArrowDown, wrapping at the end", () => {
+    expect(resolveInvoicePreviewKeyboardTab("pdf", "ArrowRight")).toBe("payer");
+    expect(resolveInvoicePreviewKeyboardTab("payer", "ArrowDown")).toBe("email");
+    expect(resolveInvoicePreviewKeyboardTab("email", "ArrowRight")).toBe("pdf");
+  });
+
+  it("moves to the previous tab for ArrowLeft and ArrowUp, wrapping at the beginning", () => {
+    expect(resolveInvoicePreviewKeyboardTab("email", "ArrowLeft")).toBe("payer");
+    expect(resolveInvoicePreviewKeyboardTab("payer", "ArrowUp")).toBe("pdf");
+    expect(resolveInvoicePreviewKeyboardTab("pdf", "ArrowLeft")).toBe("email");
+  });
+
+  it("moves to the first or last tab for Home and End", () => {
+    expect(resolveInvoicePreviewKeyboardTab("email", "Home")).toBe("pdf");
+    expect(resolveInvoicePreviewKeyboardTab("pdf", "End")).toBe("email");
+  });
+
+  it("keeps the current tab for unrelated keys", () => {
+    expect(resolveInvoicePreviewKeyboardTab("payer", "Enter")).toBe("payer");
+    expect(resolveInvoicePreviewKeyboardTab("payer", "Tab")).toBe("payer");
   });
 });
