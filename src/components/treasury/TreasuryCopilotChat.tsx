@@ -54,7 +54,6 @@ export default function TreasuryCopilotChat() {
       role: "assistant",
       content:
         "I'm ElementPay's financial assistant. I can help with your account — balances, contacts, invoices, invoice drafts, payout previews, transactions, and payments.\n\nI use your authenticated ElementPay account context, so I won't ask for business details that are already on file. Anything that moves money or changes records waits for your confirmation.\n\nTry: \"What's our treasury balance?\" or upload a supplier invoice CSV and say \"Create drafts from this.\"",
-      timestamp: messageTimestamp(),
     },
   ]);
   const [input, setInput] = useState("");
@@ -69,6 +68,7 @@ export default function TreasuryCopilotChat() {
     null,
   );
   const historyRef = useRef<ChatMessage[]>([]);
+  const submitInFlightRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +99,12 @@ export default function TreasuryCopilotChat() {
         document?: { name: string; text: string } | null;
       } = {},
     ) => {
+      if (loading || submitInFlightRef.current) {
+        return false;
+      }
+
+      submitInFlightRef.current = true;
+
       const userMsg: UiChatMessage = {
         role: "user",
         content: text,
@@ -146,13 +152,16 @@ export default function TreasuryCopilotChat() {
           setPendingActions(data.pending_actions as PendingAction[]);
         }
         setAttachment(null);
+        return true;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Request failed");
+        return false;
       } finally {
+        submitInFlightRef.current = false;
         setLoading(false);
       }
     },
-    [attachment, callChat],
+    [attachment, callChat, loading],
   );
 
   const send = useCallback(async () => {
@@ -172,30 +181,36 @@ export default function TreasuryCopilotChat() {
         content: buildInvoiceIntakeAssistantMessage(intakeDraft),
         timestamp: messageTimestamp(),
       };
-      const historyUserMsg: ChatMessage = { role: "user", content: text };
-
-      historyRef.current = [...historyRef.current, historyUserMsg];
       setMessages((m) => [...m, userMsg, assistantMsg]);
       setInvoiceIntake(intakeDraft);
       setInput("");
       setError(null);
       setPendingActions([]);
+      setAttachment(null);
       return;
     }
 
+    setInvoiceIntake(null);
     await submitUserMessage(text);
   }, [input, loading, submitUserMessage]);
 
   const submitInvoiceIntake = useCallback(
     (message: string) => {
       const draft = invoiceIntake;
-      setInvoiceIntake(null);
-      void submitUserMessage(message, {
-        displayContent: draft
-          ? `Submitted invoice details for ${draft.clientName}.`
-          : "Submitted invoice details.",
-        document: null,
-      });
+      void (async () => {
+        const submitted = await submitUserMessage(message, {
+          displayContent: draft
+            ? `Submitted invoice details for ${draft.clientName}.`
+            : "Submitted invoice details.",
+          document: null,
+        });
+
+        if (submitted) {
+          setInvoiceIntake((currentDraft) =>
+            currentDraft === draft ? null : currentDraft,
+          );
+        }
+      })();
     },
     [invoiceIntake, submitUserMessage],
   );
