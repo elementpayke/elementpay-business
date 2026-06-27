@@ -85,6 +85,16 @@ export type BulkProgressSnapshot = {
   pending: number;
 };
 
+export type BulkLineResult = {
+  rowIndex: number;
+  externalOrderId: string;
+  quoteId: string;
+  merchantOrderId: number;
+  txHash: string | null;
+  fiatAmount: string;
+  cryptoAmount: string;
+};
+
 export type BulkBatchResult = {
   batchId: string;
   totalRecipients: number;
@@ -93,6 +103,7 @@ export type BulkBatchResult = {
   processingMs: number;
   completedAt: number;
   failedRows: BulkParsedRow[];
+  lineResults?: BulkLineResult[];
 };
 
 export type BulkError = {

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Code2, LayoutDashboard, ShieldCheck, Wallet, ArrowLeftRight, FileText } from "lucide-react";
+import { Code2, LayoutDashboard, ShieldCheck, Wallet, ArrowLeftRight, FileText, Sparkles } from "lucide-react";
 import { dashboardTabs } from "@/components/dashboard/dashboardData";
 
 const iconMap = {
   Dashboard: LayoutDashboard,
   Transactions: ArrowLeftRight,
   Wallets: Wallet,
+  "Treasury AI": Sparkles,
   Reports: FileText,
   Verification: ShieldCheck,
   Developer: Code2,
@@ -18,8 +19,8 @@ export default function DashboardTabs() {
   const pathname = usePathname();
 
   return (
-    <nav className="overflow-x-auto bg-surface">
-      <div className="flex min-w-max items-center gap-6">
+    <nav className="-mx-5 overflow-x-auto bg-surface px-5 scrollbar-none md:mx-0 md:px-0">
+      <div className="flex w-max min-w-full items-center gap-4 sm:gap-6">
         {dashboardTabs.map((tab) => {
           const Icon = iconMap[tab.label as keyof typeof iconMap];
           const active =

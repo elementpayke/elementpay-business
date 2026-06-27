@@ -12,11 +12,9 @@ const POLL_INTERVAL_MS = 1200;
 const POLL_TIMEOUT_MS = 180_000;
 
 const STAGES: { key: BulkProcessingStage; label: string }[] = [
-  { key: "validating-batch", label: "Validating batch payload" },
-  { key: "reserving-fees", label: "Reserving fees and limits" },
-  { key: "initializing-queue", label: "Initializing recipients queue" },
-  { key: "sending-transfers", label: "Sending transfers in background" },
-  { key: "finalizing", label: "Finalizing settlement summary" },
+  { key: "validating-batch", label: "Preparing batch" },
+  { key: "sending-transfers", label: "Quoting and settling each payout" },
+  { key: "finalizing", label: "Finalizing summary" },
 ];
 
 function stageIndex(stage: BulkProcessingStage): number {

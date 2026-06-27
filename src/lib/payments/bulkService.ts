@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  executeBulkRow,
+  MAX_BULK_EXECUTE_ROWS,
+  type BulkLineFailure,
+  type BulkLineSuccess,
+  type BulkSenderContext,
+} from "@/lib/payments/bulkOfframp";
 import type {
   BulkBatchResult,
   BulkParsedRow,
@@ -7,67 +14,102 @@ import type {
   BulkProgressSnapshot,
 } from "@/lib/payments/bulkTypes";
 
-type SubmitBatchRequest = {
+export type SubmitBatchRequest = {
   validRows: BulkParsedRow[];
   reference?: string;
+  sender: BulkSenderContext;
 };
 
-type SubmittedBatch = {
+type BatchRun = {
   batchId: string;
   createdAt: number;
   totalRecipients: number;
+  processed: number;
+  successful: number;
+  failed: number;
   failedRows: BulkParsedRow[];
+  lineResults: BulkLineSuccess[];
+  done: boolean;
+  error?: string;
 };
 
-const STAGE_TIMINGS: Record<Exclude<BulkProcessingStage, "done">, number> = {
-  "validating-batch": 1200,
-  "reserving-fees": 1200,
-  "initializing-queue": 1500,
-  "sending-transfers": 4500,
-  finalizing: 1000,
-};
+const runs = new Map<string, BatchRun>();
 
-const batches = new Map<string, SubmittedBatch>();
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function stageForRun(run: BatchRun): BulkProcessingStage {
+  if (run.done) return "done";
+  if (run.processed === 0) return "validating-batch";
+  if (run.processed < run.totalRecipients) return "sending-transfers";
+  return "finalizing";
 }
 
 export async function submitBulkBatch(req: SubmitBatchRequest): Promise<{ batchId: string }> {
-  await wait(600);
+  if (!req.sender.refundAddress) {
+    throw new Error("Business treasury wallet is required before starting a bulk payout.");
+  }
+  if (req.validRows.length === 0) {
+    throw new Error("No valid recipients to pay.");
+  }
+  if (req.validRows.length > MAX_BULK_EXECUTE_ROWS) {
+    throw new Error(
+      `Bulk payout is limited to ${MAX_BULK_EXECUTE_ROWS} recipients per batch in this release.`,
+    );
+  }
+
   const batchId = `bulk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-  const deterministicFailureCount = Math.min(
-    Math.max(0, Math.floor(req.validRows.length * 0.03)),
-    3,
-  );
-  const failedRows = req.validRows.slice(0, deterministicFailureCount);
-  batches.set(batchId, {
+  const batchRef = req.reference?.trim() || batchId;
+
+  const run: BatchRun = {
     batchId,
     createdAt: Date.now(),
     totalRecipients: req.validRows.length,
-    failedRows,
-  });
+    processed: 0,
+    successful: 0,
+    failed: 0,
+    failedRows: [],
+    lineResults: [],
+    done: false,
+  };
+  runs.set(batchId, run);
+
+  void processBatch(batchId, req.validRows, batchRef, req.sender);
+
   return { batchId };
 }
 
-function stageAtElapsed(elapsed: number): BulkProcessingStage {
-  const t1 = STAGE_TIMINGS["validating-batch"];
-  const t2 = t1 + STAGE_TIMINGS["reserving-fees"];
-  const t3 = t2 + STAGE_TIMINGS["initializing-queue"];
-  const t4 = t3 + STAGE_TIMINGS["sending-transfers"];
-  const t5 = t4 + STAGE_TIMINGS.finalizing;
-  if (elapsed < t1) return "validating-batch";
-  if (elapsed < t2) return "reserving-fees";
-  if (elapsed < t3) return "initializing-queue";
-  if (elapsed < t4) return "sending-transfers";
-  if (elapsed < t5) return "finalizing";
-  return "done";
+async function processBatch(
+  batchId: string,
+  rows: BulkParsedRow[],
+  batchRef: string,
+  sender: BulkSenderContext,
+): Promise<void> {
+  const run = runs.get(batchId);
+  if (!run) return;
+
+  const failures: BulkLineFailure[] = [];
+
+  for (const row of rows) {
+    try {
+      const line = await executeBulkRow(row, sender, batchRef);
+      run.lineResults.push(line);
+      run.successful += 1;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Payout failed";
+      failures.push({ row, message });
+      run.failedRows.push(row);
+      run.failed += 1;
+    }
+    run.processed += 1;
+  }
+
+  run.done = true;
+  if (failures.length === rows.length) {
+    run.error = failures[0]?.message ?? "All payouts in this batch failed.";
+  }
 }
 
 export async function getBulkBatchSnapshot(batchId: string): Promise<BulkProgressSnapshot> {
-  await wait(300);
-  const record = batches.get(batchId);
-  if (!record) {
+  const run = runs.get(batchId);
+  if (!run) {
     return {
       stage: "done",
       totalRecipients: 0,
@@ -77,50 +119,63 @@ export async function getBulkBatchSnapshot(batchId: string): Promise<BulkProgres
       pending: 0,
     };
   }
-  const elapsed = Date.now() - record.createdAt;
-  const stage = stageAtElapsed(elapsed);
-  const total = record.totalRecipients;
-  const failed = record.failedRows.length;
-
-  const t1 = STAGE_TIMINGS["validating-batch"];
-  const t2 = t1 + STAGE_TIMINGS["reserving-fees"];
-  const t3 = t2 + STAGE_TIMINGS["initializing-queue"];
-  const t4 = t3 + STAGE_TIMINGS["sending-transfers"];
-
-  let processed: number;
-  if (stage === "validating-batch" || stage === "reserving-fees" || stage === "initializing-queue") {
-    processed = 0;
-  } else if (stage === "sending-transfers") {
-    const ratio = Math.min(1, Math.max(0, (elapsed - t3) / (t4 - t3)));
-    processed = Math.floor(total * ratio);
-  } else {
-    processed = total;
-  }
-
-  const successful = Math.max(0, processed - Math.min(failed, processed));
-  const pending = Math.max(0, total - processed);
 
   return {
-    stage,
-    totalRecipients: total,
-    processed,
-    successful,
-    failed: Math.min(failed, processed),
-    pending,
+    stage: stageForRun(run),
+    totalRecipients: run.totalRecipients,
+    processed: run.processed,
+    successful: run.successful,
+    failed: run.failed,
+    pending: Math.max(0, run.totalRecipients - run.processed),
   };
 }
 
 export async function finalizeBulkBatch(batchId: string, startedAt: number): Promise<BulkBatchResult> {
-  const record = batches.get(batchId);
-  const total = record?.totalRecipients ?? 0;
-  const failed = record?.failedRows.length ?? 0;
+  const run = runs.get(batchId);
+  if (!run) {
+    return {
+      batchId,
+      totalRecipients: 0,
+      successful: 0,
+      failed: 0,
+      processingMs: Date.now() - startedAt,
+      completedAt: Date.now(),
+      failedRows: [],
+      lineResults: [],
+    };
+  }
+
+  if (run.error && run.successful === 0) {
+    throw new Error(run.error);
+  }
+
   return {
     batchId,
-    totalRecipients: total,
-    successful: total - failed,
-    failed,
+    totalRecipients: run.totalRecipients,
+    successful: run.successful,
+    failed: run.failed,
     processingMs: Date.now() - startedAt,
     completedAt: Date.now(),
-    failedRows: record?.failedRows ?? [],
+    failedRows: run.failedRows,
+    lineResults: run.lineResults,
   };
+}
+
+export function toReconciliationCsv(result: BulkBatchResult): string {
+  const header =
+    "row_index,external_order_id,quote_id,merchant_order_id,tx_hash,fiat_amount,crypto_amount";
+  const lines = (result.lineResults ?? []).map((line) =>
+    [
+      line.rowIndex,
+      line.externalOrderId,
+      line.quoteId,
+      line.merchantOrderId,
+      line.txHash ?? "",
+      line.fiatAmount,
+      line.cryptoAmount,
+    ]
+      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+      .join(","),
+  );
+  return [header, ...lines].join("\n");
 }

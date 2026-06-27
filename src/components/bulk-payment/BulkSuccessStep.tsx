@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Copy, PartyPopper } from "lucide-react";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
 import { toFailedRowsCsv } from "@/lib/payments/bulkCsv";
+import { toReconciliationCsv } from "@/lib/payments/bulkService";
 import { useBulkPaymentStore } from "@/stores/bulkPaymentStore";
 
 function formatDuration(ms: number): string {
@@ -46,6 +47,12 @@ export default function BulkSuccessStep() {
     } catch {
       /* ignore */
     }
+  }
+
+  function downloadReconciliation() {
+    if (!result) return;
+    const csv = toReconciliationCsv(result);
+    triggerCsvDownload(`reconciliation-${result.batchId}.csv`, csv);
   }
 
   function downloadFailedRows() {
@@ -97,6 +104,16 @@ export default function BulkSuccessStep() {
           <Row label="Failed transfers">{result.failed}</Row>
           <Row label="Processing time">{formatDuration(result.processingMs)}</Row>
         </dl>
+
+        {result.lineResults && result.lineResults.length > 0 ? (
+          <button
+            type="button"
+            onClick={downloadReconciliation}
+            className="h-11 w-full rounded-xl border border-[#E1E4EE] text-sm font-semibold text-[#303854] transition hover:border-[#CBD2E5]"
+          >
+            Download reconciliation CSV
+          </button>
+        ) : null}
 
         {partial ? (
           <button

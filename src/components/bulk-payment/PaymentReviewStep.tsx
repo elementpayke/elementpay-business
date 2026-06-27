@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, Clock3 } from "lucide-react";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
-import { useSelectedWallet } from "@/lib/wallets/useSelectedWallet";
+import { useAuth } from "@/lib/AuthContext";
+import { MAX_BULK_EXECUTE_ROWS } from "@/lib/payments/bulkOfframp";
 import { submitBulkBatch } from "@/lib/payments/bulkService";
+import { useSelectedWallet } from "@/lib/wallets/useSelectedWallet";
 import { useBulkPaymentStore } from "@/stores/bulkPaymentStore";
 
 function formatAmount(amount: number): string {
@@ -22,7 +24,10 @@ export default function PaymentReviewStep() {
   const setBatchId = useBulkPaymentStore((s) => s.setBatchId);
   const setError = useBulkPaymentStore((s) => s.setError);
 
-  const { selectedWallet } = useSelectedWallet();
+  const { user, business } = useAuth();
+  const { selectedWallet, selectedWalletAddress } = useSelectedWallet();
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const validRows = useMemo(
     () => parseResult?.rows.filter((row) => row.status === "valid") ?? [],
@@ -33,20 +38,36 @@ export default function PaymentReviewStep() {
 
   const { summary } = parseResult;
   const primaryCurrency = summary.currencies[0] ?? "";
-  const estimatedFees = summary.validCount * 5;
-  const totalDebit = summary.totalAmount + estimatedFees;
+  const overLimit = summary.validCount > MAX_BULK_EXECUTE_ROWS;
 
   async function startBatch() {
+    if (!selectedWalletAddress) {
+      setError({
+        code: "no_wallet",
+        message: "Connect your business treasury wallet before starting a bulk payout.",
+        retryable: false,
+      });
+      return;
+    }
+    setSubmitting(true);
     try {
       const { batchId } = await submitBulkBatch({
         validRows,
         reference: reference || undefined,
+        sender: {
+          refundAddress: selectedWalletAddress,
+          senderName: business?.name ?? business?.legal_name ?? undefined,
+          senderCountry: business?.country ?? undefined,
+          senderEmail: user?.email,
+        },
       });
       setBatchId(batchId);
       setPhase("processing");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to start batch";
       setError({ code: "submit_failed", message, retryable: true });
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -57,8 +78,8 @@ export default function PaymentReviewStep() {
         <p className="mt-2 text-[28px] font-semibold tracking-[-0.02em] text-[#171D32]">
           {primaryCurrency} {formatAmount(summary.totalAmount)}
         </p>
-        <p className="mt-1 text-xs font-medium text-tertiary-700">
-          + Estimated fees: {primaryCurrency} {formatAmount(estimatedFees)}
+        <p className="mt-1 text-xs text-[#8E93A7]">
+          Each row is quoted live; USDT is debited from your treasury per recipient.
         </p>
         <p className="mt-4 text-xs text-[#8E93A7]">to</p>
         <p className="mt-1 text-base font-semibold text-[#1D243C]">
@@ -70,6 +91,16 @@ export default function PaymentReviewStep() {
         <Clock3 className="h-4 w-4" />
         <span>Transfers run in the background — you can safely navigate away after confirming.</span>
       </div>
+
+      {overLimit ? (
+        <div className="flex items-start gap-3 rounded-xl border border-[#F5D69A] bg-[#FFF8E5] p-4 text-xs text-[#8A5F1A]">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            This batch has {summary.validCount} recipients. MVP limit is {MAX_BULK_EXECUTE_ROWS} per
+            run — remove rows or split the file.
+          </p>
+        </div>
+      ) : null}
 
       {summary.invalidCount > 0 ? (
         <div className="flex items-start gap-3 rounded-xl border border-[#F5D69A] bg-[#FFF8E5] p-4 text-xs text-[#8A5F1A]">
@@ -86,13 +117,10 @@ export default function PaymentReviewStep() {
         <Row label="Total amount">
           {primaryCurrency} {formatAmount(summary.totalAmount)}
         </Row>
-        <Row label="Estimated fees">
-          {primaryCurrency} {formatAmount(estimatedFees)}
+        <Row label="Source wallet">
+          {selectedWallet?.label ?? selectedWalletAddress ?? "—"}
         </Row>
-        <Row label="Net debit">
-          {primaryCurrency} {formatAmount(totalDebit)}
-        </Row>
-        <Row label="Source wallet">{selectedWallet?.label ?? "Default wallet"}</Row>
+        <Row label="Settlement">USDT on Polygon → local fiat per row</Row>
         <Row label="Currencies">{summary.currencies.join(", ") || "—"}</Row>
       </dl>
 
@@ -107,6 +135,19 @@ export default function PaymentReviewStep() {
         />
       </div>
 
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] p-4 text-sm text-[#4D556D]">
+        <input
+          type="checkbox"
+          checked={acknowledged}
+          onChange={(e) => setAcknowledged(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-[#CBD2E5]"
+        />
+        <span>
+          I authorize ElementPay to quote and accept each payout from our business treasury wallet.
+          USDT transfers are submitted automatically when Privy custodial signing is enabled.
+        </span>
+      </label>
+
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
@@ -118,10 +159,10 @@ export default function PaymentReviewStep() {
         <button
           type="button"
           onClick={startBatch}
-          disabled={summary.validCount === 0}
+          disabled={summary.validCount === 0 || overLimit || !acknowledged || submitting}
           className="h-12 flex-1 rounded-xl bg-primary-500 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:bg-[#B4B9CC]"
         >
-          Start bulk transfer
+          {submitting ? "Starting…" : "Start bulk transfer"}
         </button>
       </div>
     </div>

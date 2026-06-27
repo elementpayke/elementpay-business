@@ -77,6 +77,7 @@ export const dashboardTabs: TabItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Transactions", href: "/dashboard/transactions" },
   { label: "Wallets", href: "/dashboard/wallets" },
+  { label: "Treasury AI", href: "/dashboard/treasury-copilot", badge: "QVAC" },
   { label: "Reports", href: "/dashboard/reports" },
   { label: "Verification", href: "/dashboard/verification", badge: "Tier 2" },
   { label: "Developer", href: "/dashboard/developer" },
@@ -94,6 +95,12 @@ export const quickActions: QuickAction[] = [
     description: "Send payments to multiple recipients instantly",
     tone: "secondary",
     href: "/dashboard/bulk-payment",
+  },
+  {
+    title: "Treasury Copilot",
+    description: "AI bulk payouts with QVAC (local, private)",
+    tone: "primary",
+    href: "/dashboard/treasury-copilot",
   },
   {
     title: "Create Invoice",
