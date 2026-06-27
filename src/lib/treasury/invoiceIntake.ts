@@ -56,7 +56,7 @@ function normalizeAmount(value: string): string | null {
     .replace(/\$$/, "")
     .replace(/,/g, "");
 
-  if (!/^\d+(?:\.\d+)?$/.test(amountText)) {
+  if (!/^\d+(?:\.\d{1,2})?$/.test(amountText)) {
     return null;
   }
 
@@ -72,12 +72,13 @@ export function parseInvoiceIntakeRequest(
   content: string,
 ): InvoiceIntakeDraft | null {
   const normalizedContent = normalizeWhitespace(content);
+  const amountPattern = "\\$?\\s*\\d[\\d,]*(?:\\.\\d{1,2})?\\$?";
 
   const createInvoiceMatch = normalizedContent.match(
-    /^create invoice for (.+?) for (\$?\s*\d[\d,]*(?:\.\d+)?\$?)$/i,
+    new RegExp(`^create invoice for (.+?) for (${amountPattern})$`, "i"),
   );
   const compactInvoiceMatch = normalizedContent.match(
-    /^invoice (.+?) (\$?\s*\d[\d,]*(?:\.\d+)?\$?)$/i,
+    new RegExp(`^invoice (.+?)(?: for)? (${amountPattern})$`, "i"),
   );
   const match = createInvoiceMatch ?? compactInvoiceMatch;
 

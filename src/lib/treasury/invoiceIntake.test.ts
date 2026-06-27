@@ -27,6 +27,19 @@ describe("parseInvoiceIntakeRequest", () => {
     });
   });
 
+  it("parses compact invoice requests with a for separator before the amount", () => {
+    expect(parseInvoiceIntakeRequest("invoice jane doe for $50")).toEqual({
+      clientName: "Jane Doe",
+      amount: "50.00",
+      currency: "USD",
+    });
+  });
+
+  it("rejects USD amounts with more than two decimal places", () => {
+    expect(parseInvoiceIntakeRequest("invoice jane doe $1.005")).toBeNull();
+    expect(parseInvoiceIntakeRequest("invoice jane doe $1.999")).toBeNull();
+  });
+
   it("ignores non-invoice treasury requests", () => {
     expect(parseInvoiceIntakeRequest("what is our treasury balance?")).toBeNull();
   });
@@ -47,12 +60,12 @@ describe("invoice intake messages", () => {
 
   it("builds the follow-up confirmation prompt from supplied fields", () => {
     const fields = {
-      clientEmail: "jane@example.com",
-      lineItemDescription: "Services",
-      businessStreetAddress: "Kijabe Street",
-      businessCity: "Nairobi",
-      businessCountry: "KE",
-      businessPostalCode: "00800",
+      clientEmail: " jane@example.com ",
+      lineItemDescription: " Services ",
+      businessStreetAddress: " Kijabe Street ",
+      businessCity: " Nairobi ",
+      businessCountry: " KE ",
+      businessPostalCode: " 00800 ",
     };
 
     const message = buildInvoiceIntakeFollowUpMessage(draft, fields);
@@ -90,5 +103,21 @@ describe("validateInvoiceIntakeFields", () => {
           businessPostalCode: "ZIP / postal code is required.",
         },
       });
+  });
+
+  it("accepts whitespace-padded required fields", () => {
+    expect(
+      validateInvoiceIntakeFields({
+        clientEmail: " jane@example.com ",
+        lineItemDescription: " Services ",
+        businessStreetAddress: " Kijabe Street ",
+        businessCity: " Nairobi ",
+        businessCountry: " KE ",
+        businessPostalCode: " 00800 ",
+      }),
+    ).toEqual({
+      valid: true,
+      errors: {},
+    });
   });
 });
