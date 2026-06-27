@@ -115,7 +115,7 @@ export default function InvoiceIntakeCard({
   }
 
   return (
-    <div className="mr-4 max-w-[560px] rounded-2xl border border-[#E6EAF2] bg-[#F8FAFE] p-4 text-sm text-[#1D243C] shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
+    <div className="ml-[42px] mr-4 max-w-[430px] rounded-2xl border border-[#E6EAF2] bg-[#F8FAFE] p-4 text-sm text-[#1D243C] shadow-[0_8px_24px_rgba(16,24,40,0.04)]">
       <div>
         <h3 className="text-sm font-semibold text-[#171D32]">
           Invoice details for {draft.clientName}
