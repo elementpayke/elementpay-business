@@ -25,6 +25,43 @@ export const invoicePreviewTabs: { id: InvoicePreviewTabId; label: string }[] = 
 
 export const DEFAULT_INVOICE_PREVIEW_TAB: InvoicePreviewTabId = "pdf";
 
+export type InvoicePreviewRowModel = {
+  label: string;
+  value: string;
+  strong?: boolean;
+};
+
+export type InvoicePreviewPanelModel =
+  | {
+      kind: "pdf";
+      compact: true;
+    }
+  | {
+      kind: "payer";
+      eyebrow: string;
+      title: string;
+      subtitle: string;
+      rows: InvoicePreviewRowModel[];
+    }
+  | {
+      kind: "email";
+      subject: string;
+      greeting: string;
+      summary: {
+        billerName: string;
+        invoiceId: string;
+        amount: string;
+      };
+      dueDateLine: string;
+      note: string;
+      documentsLine: string | null;
+    };
+
+export type InvoicePreviewModel = {
+  activeTab: InvoicePreviewTabId;
+  panel: InvoicePreviewPanelModel;
+};
+
 function partyName(party: InvoiceDraft["client"]) {
   return [party.firstName, party.lastName].filter(Boolean).join(" ") || "Client";
 }
@@ -42,20 +79,92 @@ function formatDisplayDate(iso: string) {
   return `${day}/${month}/${year}`;
 }
 
+export function resolveInvoicePreviewTab(
+  current: InvoicePreviewTabId,
+  next: InvoicePreviewTabId | string,
+): InvoicePreviewTabId {
+  return invoicePreviewTabs.some((tab) => tab.id === next) ? (next as InvoicePreviewTabId) : current;
+}
+
+export function buildInvoicePreviewModel(
+  draft: InvoiceDraft,
+  activeTab: InvoicePreviewTabId = DEFAULT_INVOICE_PREVIEW_TAB,
+): InvoicePreviewModel {
+  if (activeTab === "pdf") {
+    return {
+      activeTab,
+      panel: {
+        kind: "pdf",
+        compact: true,
+      },
+    };
+  }
+
+  const totals = calculateTotals(draft);
+  const currency = draft.preferredCurrency || "USD";
+  const billerName = partyName(draft.biller);
+  const clientName = partyName(draft.client);
+
+  if (activeTab === "payer") {
+    const paymentMethod = getPaymentMethodLabel(draft);
+    const wallet = receivingWallets.find((item) => item.id === draft.receivingWalletId);
+
+    return {
+      activeTab,
+      panel: {
+        kind: "payer",
+        eyebrow: "Payer checkout",
+        title: draft.invoiceTitle || `Invoice from ${billerName}`,
+        subtitle: `For ${clientName}`,
+        rows: [
+          { label: "Amount due", value: formatInvoiceMoney(totals.total, currency), strong: true },
+          { label: "Due date", value: formatDisplayDate(draft.dueDate) },
+          { label: "Payment method", value: paymentMethod ?? "Not selected" },
+          { label: "Receiving wallet", value: wallet ? `${wallet.label} · ${wallet.currency}` : "Not selected" },
+          { label: "Documents", value: `${draft.supportingDocuments.length} attached` },
+        ],
+      },
+    };
+  }
+
+  const documentCount = draft.supportingDocuments.length;
+
+  return {
+    activeTab,
+    panel: {
+      kind: "email",
+      subject: `Subject: ${draft.invoiceTitle || `Invoice ${draft.invoiceId}`} is ready`,
+      greeting: `Hi ${clientName},`,
+      summary: {
+        billerName,
+        invoiceId: draft.invoiceId,
+        amount: formatInvoiceMoney(totals.total, currency),
+      },
+      dueDateLine: `Due date: ${formatDisplayDate(draft.dueDate)}.`,
+      note: draft.note,
+      documentsLine:
+        documentCount > 0
+          ? `${documentCount} supporting document${documentCount === 1 ? "" : "s"} will be listed with the invoice.`
+          : null,
+    },
+  };
+}
+
 export default function InvoicePreviewTabs() {
   const [activeTab, setActiveTab] = useState<InvoicePreviewTabId>(DEFAULT_INVOICE_PREVIEW_TAB);
   const draft = useInvoiceStore((s) => s.draft);
+  const model = buildInvoicePreviewModel(draft, activeTab);
 
   return (
     <section className="min-w-0 rounded-xl border border-[#E8EBF3] bg-white">
       <div className="flex gap-1 border-b border-[#E8EBF3] p-1.5">
         {invoicePreviewTabs.map((tab) => {
-          const active = tab.id === activeTab;
+          const active = tab.id === model.activeTab;
           return (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setActiveTab((current) => resolveInvoicePreviewTab(current, tab.id))}
               className={`min-w-0 flex-1 rounded-lg px-2.5 py-2 text-xs font-semibold transition ${
                 active
                   ? "bg-primary-500 text-white"
@@ -69,55 +178,40 @@ export default function InvoicePreviewTabs() {
       </div>
 
       <div className="min-w-0 p-3 sm:p-4">
-        {activeTab === "pdf" ? <InvoicePreview compact /> : null}
-        {activeTab === "payer" ? <PayerPreview draft={draft} /> : null}
-        {activeTab === "email" ? <EmailPreview draft={draft} /> : null}
+        {model.panel.kind === "pdf" ? <InvoicePreview compact={model.panel.compact} /> : null}
+        {model.panel.kind === "payer" ? <PayerPreview panel={model.panel} /> : null}
+        {model.panel.kind === "email" ? <EmailPreview panel={model.panel} /> : null}
       </div>
     </section>
   );
 }
 
-function PayerPreview({ draft }: { draft: InvoiceDraft }) {
-  const totals = calculateTotals(draft);
-  const currency = draft.preferredCurrency || "USD";
-  const billerName = partyName(draft.biller);
-  const clientName = partyName(draft.client);
-  const paymentMethod = getPaymentMethodLabel(draft);
-  const wallet = receivingWallets.find((item) => item.id === draft.receivingWalletId);
-
+function PayerPreview({ panel }: { panel: Extract<InvoicePreviewPanelModel, { kind: "payer" }> }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl bg-[#F7F8FC] p-4">
         <div className="flex items-start gap-3">
           <MonitorSmartphone className="mt-0.5 h-5 w-5 text-primary-500" />
           <div className="min-w-0">
-            <p className="text-xs font-medium text-[#7E8498]">Payer checkout</p>
+            <p className="text-xs font-medium text-[#7E8498]">{panel.eyebrow}</p>
             <h3 className="mt-1 truncate text-lg font-semibold text-[#1A2138]">
-              {draft.invoiceTitle || `Invoice from ${billerName}`}
+              {panel.title}
             </h3>
-            <p className="mt-1 text-sm text-[#5F667D]">For {clientName}</p>
+            <p className="mt-1 text-sm text-[#5F667D]">{panel.subtitle}</p>
           </div>
         </div>
       </div>
 
       <dl className="space-y-3 text-sm">
-        <PreviewRow label="Amount due" value={formatInvoiceMoney(totals.total, currency)} strong />
-        <PreviewRow label="Due date" value={formatDisplayDate(draft.dueDate)} />
-        <PreviewRow label="Payment method" value={paymentMethod ?? "Not selected"} />
-        <PreviewRow label="Receiving wallet" value={wallet ? `${wallet.label} · ${wallet.currency}` : "Not selected"} />
-        <PreviewRow label="Documents" value={`${draft.supportingDocuments.length} attached`} />
+        {panel.rows.map((row) => (
+          <PreviewRow key={row.label} label={row.label} value={row.value} strong={row.strong} />
+        ))}
       </dl>
     </div>
   );
 }
 
-function EmailPreview({ draft }: { draft: InvoiceDraft }) {
-  const totals = calculateTotals(draft);
-  const currency = draft.preferredCurrency || "USD";
-  const billerName = partyName(draft.biller);
-  const clientName = partyName(draft.client);
-  const amount = formatInvoiceMoney(totals.total, currency);
-
+function EmailPreview({ panel }: { panel: Extract<InvoicePreviewPanelModel, { kind: "email" }> }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-[#ECEEF4] bg-[#FAFBFE] p-4">
@@ -126,25 +220,25 @@ function EmailPreview({ draft }: { draft: InvoiceDraft }) {
           Email
         </div>
         <p className="mt-3 text-sm font-semibold text-[#1A2138]">
-          Subject: {draft.invoiceTitle || `Invoice ${draft.invoiceId}`} is ready
+          {panel.subject}
         </p>
       </div>
 
       <div className="space-y-3 rounded-xl border border-[#ECEEF4] bg-white p-4 text-sm text-[#3F465E]">
-        <p>Hi {clientName},</p>
+        <p>{panel.greeting}</p>
         <p>
-          {billerName} sent invoice <span className="font-semibold text-[#1A2138]">{draft.invoiceId}</span> for{" "}
-          <span className="font-semibold text-[#1A2138]">{amount}</span>.
+          {panel.summary.billerName} sent invoice{" "}
+          <span className="font-semibold text-[#1A2138]">{panel.summary.invoiceId}</span> for{" "}
+          <span className="font-semibold text-[#1A2138]">{panel.summary.amount}</span>.
         </p>
-        <p>Due date: {formatDisplayDate(draft.dueDate)}.</p>
-        {draft.note ? <p className="whitespace-pre-line">{draft.note}</p> : null}
+        <p>{panel.dueDateLine}</p>
+        {panel.note ? <p className="whitespace-pre-line">{panel.note}</p> : null}
         <p className="font-medium text-primary-600">Review and pay invoice</p>
       </div>
 
-      {draft.supportingDocuments.length > 0 ? (
+      {panel.documentsLine ? (
         <div className="rounded-xl bg-[#F7F8FC] p-3 text-xs text-[#5F667D]">
-          {draft.supportingDocuments.length} supporting document
-          {draft.supportingDocuments.length === 1 ? "" : "s"} will be listed with the invoice.
+          {panel.documentsLine}
         </div>
       ) : null}
     </div>
