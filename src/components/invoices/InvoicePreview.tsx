@@ -24,7 +24,7 @@ function formatDisplayDate(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
-export default function InvoicePreview() {
+export default function InvoicePreview({ compact = false }: { compact?: boolean }) {
   const draft = useInvoiceStore((s) => s.draft);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
@@ -60,21 +60,39 @@ export default function InvoicePreview() {
   const clientName = [draft.client.firstName, draft.client.lastName].filter(Boolean).join(" ") || "—";
 
   return (
-    <article className="space-y-8">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-500">
-            <span className="block h-6 w-6 rounded-md bg-white" />
+    <article className={compact ? "min-w-0 space-y-5" : "space-y-8"}>
+      <header className={`flex items-start justify-between gap-4 ${compact ? "flex-col sm:flex-row" : ""}`}>
+        <div className={`flex min-w-0 items-center ${compact ? "gap-3" : "gap-4"}`}>
+          <div
+            className={`flex shrink-0 items-center justify-center bg-primary-500 ${
+              compact ? "h-11 w-11 rounded-xl" : "h-14 w-14 rounded-2xl"
+            }`}
+          >
+            <span className={`block rounded-md bg-white ${compact ? "h-5 w-5" : "h-6 w-6"}`} />
           </div>
-          <div>
-            <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-[#1A2138]">
+          <div className="min-w-0">
+            <h1
+              className={`font-semibold tracking-[-0.01em] text-[#1A2138] ${
+                compact ? "text-[18px] leading-tight" : "text-[22px]"
+              }`}
+            >
               {draft.invoiceTitle || `Invoice for ${clientName}`}
             </h1>
           </div>
         </div>
-        <div className="flex h-[120px] w-[120px] items-center justify-center rounded-xl bg-white">
+        <div
+          className={`flex shrink-0 items-center justify-center rounded-xl bg-white ${
+            compact ? "h-[88px] w-[88px]" : "h-[120px] w-[120px]"
+          }`}
+        >
           {qrDataUrl ? (
-            <Image src={qrDataUrl} alt="Invoice QR code" width={120} height={120} unoptimized />
+            <Image
+              src={qrDataUrl}
+              alt="Invoice QR code"
+              width={compact ? 88 : 120}
+              height={compact ? 88 : 120}
+              unoptimized
+            />
           ) : (
             <div className="h-full w-full animate-pulse rounded-md bg-[#F4F5F9]" />
           )}
@@ -83,13 +101,13 @@ export default function InvoicePreview() {
 
       <div className="h-px w-full bg-[#ECEEF4]" />
 
-      <section className="grid gap-6 sm:grid-cols-3">
+      <section className={`grid gap-4 ${compact ? "sm:grid-cols-3" : "gap-6 sm:grid-cols-3"}`}>
         <InfoBlock label="Invoice ID" value={draft.invoiceId} />
         <InfoBlock label="Issue date" value={formatDisplayDate(draft.issueDate)} />
         <InfoBlock label="Due date" value={formatDisplayDate(draft.dueDate)} />
       </section>
 
-      <section className="grid gap-8 lg:grid-cols-2">
+      <section className={`grid ${compact ? "gap-5" : "gap-8 lg:grid-cols-2"}`}>
         <PartyBlock
           label="Billed by:"
           name={billerName}
@@ -116,7 +134,7 @@ export default function InvoicePreview() {
         <section className="space-y-2">
           <p className="text-xs text-[#8E93A7]">Payment method</p>
           <p className="text-[15px] font-semibold text-[#1A2138]">{paymentMethod.label}</p>
-          <dl className="mt-3 space-y-2 text-sm">
+          <dl className={`mt-3 space-y-2 ${compact ? "text-xs" : "text-sm"}`}>
             {paymentMethod.fields.map((field) => {
               const value = draft.paymentMethodFields[field.key];
               if (!value) return null;
@@ -146,35 +164,47 @@ export default function InvoicePreview() {
       ) : null}
 
       <section className="space-y-3">
-        <div className="overflow-hidden rounded-xl border border-[#ECEEF4]">
-          <div className="grid grid-cols-[80px_minmax(0,2fr)_100px_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)] items-center gap-2 border-b border-[#ECEEF4] bg-[#FAFBFE] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8E93A7]">
-            <div>Item No.</div>
-            <div>Description</div>
-            <div>Quantity</div>
-            <div>Unit price</div>
-            <div>Amount</div>
-            <div>USD Equiv.</div>
-          </div>
-          <div className="divide-y divide-[#ECEEF4]">
-            {draft.lineItems.map((item, index) => {
-              const amount = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
-              const usd = amount > 0 ? amount / 10.76 : 0;
-              return (
-                <div
-                  key={item.id}
-                  className="grid grid-cols-[80px_minmax(0,2fr)_100px_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)] items-center gap-2 px-4 py-3 text-sm"
-                >
-                  <div className="text-[#5F667D]">{index + 1}</div>
-                  <div className="font-medium text-[#1A2138]">{item.description || "—"}</div>
-                  <div className="text-[#3F465E]">{item.quantity}</div>
-                  <div className="text-[#3F465E]">{formatInvoiceMoneyCompact(item.unitPrice, currency)}</div>
-                  <div className="font-medium text-[#1A2138]">
-                    {formatInvoiceMoneyCompact(amount, currency)}
+        <div className="overflow-x-auto rounded-xl border border-[#ECEEF4]">
+          <div className={compact ? "min-w-[620px]" : "min-w-[760px]"}>
+            <div
+              className={`grid items-center gap-2 border-b border-[#ECEEF4] bg-[#FAFBFE] font-semibold uppercase tracking-[0.08em] text-[#8E93A7] ${
+                compact
+                  ? "grid-cols-[48px_minmax(0,2fr)_70px_minmax(0,1fr)_minmax(0,1fr)] px-3 py-2 text-[10px]"
+                  : "grid-cols-[80px_minmax(0,2fr)_100px_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)] px-4 py-3 text-[11px]"
+              }`}
+            >
+              <div>Item</div>
+              <div>Description</div>
+              <div>Qty</div>
+              <div>Unit price</div>
+              <div>Amount</div>
+              {!compact ? <div>USD Equiv.</div> : null}
+            </div>
+            <div className="divide-y divide-[#ECEEF4]">
+              {draft.lineItems.map((item, index) => {
+                const amount = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+                const usd = amount > 0 ? amount / 10.76 : 0;
+                return (
+                  <div
+                    key={item.id}
+                    className={`grid items-center gap-2 text-[#3F465E] ${
+                      compact
+                        ? "grid-cols-[48px_minmax(0,2fr)_70px_minmax(0,1fr)_minmax(0,1fr)] px-3 py-2 text-xs"
+                        : "grid-cols-[80px_minmax(0,2fr)_100px_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)] px-4 py-3 text-sm"
+                    }`}
+                  >
+                    <div className="text-[#5F667D]">{index + 1}</div>
+                    <div className="min-w-0 truncate font-medium text-[#1A2138]">{item.description || "—"}</div>
+                    <div>{item.quantity}</div>
+                    <div>{formatInvoiceMoneyCompact(item.unitPrice, currency)}</div>
+                    <div className="font-medium text-[#1A2138]">
+                      {formatInvoiceMoneyCompact(amount, currency)}
+                    </div>
+                    {!compact ? <div className="text-[#8E93A7]">USD {usd.toFixed(2)}</div> : null}
                   </div>
-                  <div className="text-[#8E93A7]">USD {usd.toFixed(2)}</div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
@@ -211,7 +241,7 @@ export default function InvoicePreview() {
       {draft.note ? (
         <section className="space-y-2">
           <p className="text-xs text-[#8E93A7]">Note to client</p>
-          <p className="whitespace-pre-line text-sm text-[#1A2138]">{draft.note}</p>
+          <p className={`whitespace-pre-line text-[#1A2138] ${compact ? "text-xs" : "text-sm"}`}>{draft.note}</p>
         </section>
       ) : null}
     </article>
