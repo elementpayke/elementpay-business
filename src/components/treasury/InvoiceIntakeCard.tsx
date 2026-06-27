@@ -94,12 +94,8 @@ export default function InvoiceIntakeCard({
 
     lastDraftResetKeyRef.current = nextDraftResetKey;
 
-    const frame = window.requestAnimationFrame(() => {
-      setFields(createEmptyInvoiceIntakeFields());
-      setErrors({});
-    });
-
-    return () => window.cancelAnimationFrame(frame);
+    setFields(createEmptyInvoiceIntakeFields());
+    setErrors({});
   }, [draft.clientName, draft.amount, draft.currency]);
 
   function updateField(name: InvoiceIntakeFieldName, value: string) {
