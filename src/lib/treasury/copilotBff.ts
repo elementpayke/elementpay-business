@@ -1,11 +1,12 @@
 import {
   buildDocumentUserMessage,
-  COPILOT_SYSTEM_PROMPT,
+  buildCopilotSystemPrompt,
   dispatchCopilotTool,
   isPendingConfirmation,
   toolsForQvac,
   type CopilotToolContext,
 } from "@/lib/treasury/copilotTools.server";
+import { fetchAccountContext } from "@/lib/treasury/copilotAccountContext";
 
 const QVAC_URL = (process.env.QVAC_API_URL || "http://127.0.0.1:11434/v1").replace(
   /\/$/,
@@ -41,13 +42,13 @@ async function qvacCompletion(messages: ChatMessage[]) {
     });
   } catch (err) {
     throw new Error(
-      `QVAC unavailable — start it with: npx @qvac/cli serve (${err instanceof Error ? err.message : String(err)})`,
+      `Assistant service unavailable — start the local assistant service (${err instanceof Error ? err.message : String(err)})`,
     );
   }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(
-      `QVAC unavailable (${res.status}). Start QVAC: npx @qvac/cli serve — ${text.slice(0, 200)}`,
+      `Assistant service unavailable (${res.status}). Start the local assistant service — ${text.slice(0, 200)}`,
     );
   }
   const body = await res.json();
@@ -92,7 +93,10 @@ export async function runTreasuryChat(
   const ctx: CopilotToolContext = { authHeader };
   const incoming = input.messages;
   const lastUser = [...incoming].reverse().find((m) => m.role === "user");
-  const messages: ChatMessage[] = [{ role: "system", content: COPILOT_SYSTEM_PROMPT }];
+  const accountContext = await fetchAccountContext(authHeader, MBOKA_BASE);
+  const messages: ChatMessage[] = [
+    { role: "system", content: buildCopilotSystemPrompt(accountContext) },
+  ];
 
   for (const m of incoming) {
     if (lastUser && m === lastUser) {
@@ -109,7 +113,7 @@ export async function runTreasuryChat(
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     const message = await qvacCompletion(messages);
-    if (!message) throw new Error("Empty QVAC response");
+    if (!message) throw new Error("Empty assistant response");
     messages.push(message);
 
     if (!message.tool_calls?.length) {

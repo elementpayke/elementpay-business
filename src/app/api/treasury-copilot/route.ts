@@ -67,7 +67,9 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Treasury copilot failed";
-    const status = message.toLowerCase().includes("qvac") ? 503 : 400;
+    const status = message.toLowerCase().includes("assistant service unavailable")
+      ? 503
+      : 400;
     return NextResponse.json({ status: "error", message }, { status });
   }
 }

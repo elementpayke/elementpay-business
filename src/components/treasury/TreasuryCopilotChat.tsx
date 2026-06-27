@@ -33,7 +33,7 @@ export default function TreasuryCopilotChat() {
     {
       role: "assistant",
       content:
-        "I'm your Financial Assistant (QVAC — runs locally). I can check balances, list invoices and contacts, preview payouts, and draft invoices from uploaded files.\n\nNothing that moves money or changes records runs until you tap Confirm.\n\nTry: \"What's our treasury balance?\" or upload a supplier invoice CSV and say \"Create drafts from this.\"",
+        "I'm ElementPay's financial assistant. I can help with your account — balances, contacts, invoices, invoice drafts, payout previews, transactions, and payments.\n\nI use your authenticated ElementPay account context, so I won't ask for business details that are already on file. Anything that moves money or changes records waits for your confirmation.\n\nTry: \"What's our treasury balance?\" or upload a supplier invoice CSV and say \"Create drafts from this.\"",
     },
   ]);
   const [input, setInput] = useState("");
@@ -158,7 +158,7 @@ export default function TreasuryCopilotChat() {
         <div>
           <h2 className="text-sm font-semibold text-[#171D32]">Financial Assistant</h2>
           <p className="text-xs text-[#8E93A7]">
-            QVAC · balances · invoices · payouts
+            Balances · invoices · payouts
           </p>
         </div>
       </div>
@@ -273,8 +273,7 @@ export default function TreasuryCopilotChat() {
           </button>
         </div>
         <p className="mt-2 text-[10px] text-[#8E93A7]">
-          QVAC must be running locally. Upload CSV/txt invoices or contracts — confirm before any
-          payout or record change.
+          Upload CSV/txt invoices or contracts — confirm before any payout or record change.
         </p>
       </div>
     </div>
