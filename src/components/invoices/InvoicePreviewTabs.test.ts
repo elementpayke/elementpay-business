@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_INVOICE_PREVIEW_TAB,
   buildInvoicePreviewModel,
+  getInvoicePreviewPanelId,
+  getInvoicePreviewTabId,
   invoicePreviewTabs,
   resolveInvoicePreviewTab,
 } from "@/components/invoices/InvoicePreviewTabs";
@@ -80,6 +82,28 @@ describe("invoicePreviewTabs", () => {
       "PDF Preview",
       "Payer Preview",
       "Email Preview",
+    ]);
+  });
+
+  it("exposes stable accessibility ids for each tab and panel", () => {
+    expect(
+      invoicePreviewTabs.map((tab) => ({
+        tabId: getInvoicePreviewTabId(tab.id),
+        panelId: getInvoicePreviewPanelId(tab.id),
+      })),
+    ).toEqual([
+      {
+        tabId: "invoice-preview-tab-pdf",
+        panelId: "invoice-preview-panel-pdf",
+      },
+      {
+        tabId: "invoice-preview-tab-payer",
+        panelId: "invoice-preview-panel-payer",
+      },
+      {
+        tabId: "invoice-preview-tab-email",
+        panelId: "invoice-preview-panel-email",
+      },
     ]);
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -21,6 +22,10 @@ const drawerFocusableSelector = [
   "select:not([disabled])",
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
+
+const dashboardShellStyle = {
+  "--dashboard-sidebar-width": "248px",
+} as CSSProperties;
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -178,7 +183,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground" style={dashboardShellStyle}>
       <div className="flex min-h-screen">
         <div className="hidden lg:block">
           <DashboardSidebar />

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSupportingDocumentMetadata,
+  getSupportingDocumentErrorAnnouncementProps,
   MAX_SUPPORTING_DOCUMENTS,
   MAX_SUPPORTING_DOCUMENT_SIZE_BYTES,
 } from "@/components/invoices/SupportingDocumentsDropzone";
@@ -61,5 +62,14 @@ describe("buildSupportingDocumentMetadata", () => {
     expect(result.accepted).toHaveLength(1);
     expect(result.accepted[0].name).toBe("accepted.pdf");
     expect(result.errors).toEqual(["Only 10 supporting documents can be attached."]);
+  });
+});
+
+describe("getSupportingDocumentErrorAnnouncementProps", () => {
+  it("marks validation errors as polite status updates", () => {
+    expect(getSupportingDocumentErrorAnnouncementProps()).toEqual({
+      role: "status",
+      "aria-live": "polite",
+    });
   });
 });

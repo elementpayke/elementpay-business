@@ -14,6 +14,13 @@ type BuildSupportingDocumentResult = {
   errors: string[];
 };
 
+export function getSupportingDocumentErrorAnnouncementProps() {
+  return {
+    role: "status" as const,
+    "aria-live": "polite" as const,
+  };
+}
+
 function makeDocumentId(file: FileMetadataInput) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -131,7 +138,11 @@ export default function SupportingDocumentsDropzone() {
         }}
       />
 
-      {error ? <p className="text-xs font-medium text-[#E35D5B]">{error}</p> : null}
+      {error ? (
+        <p {...getSupportingDocumentErrorAnnouncementProps()} className="text-xs font-medium text-[#E35D5B]">
+          {error}
+        </p>
+      ) : null}
 
       {documents.length > 0 ? (
         <ul className="space-y-2">

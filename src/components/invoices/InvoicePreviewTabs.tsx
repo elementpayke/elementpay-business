@@ -25,6 +25,14 @@ export const invoicePreviewTabs: { id: InvoicePreviewTabId; label: string }[] = 
 
 export const DEFAULT_INVOICE_PREVIEW_TAB: InvoicePreviewTabId = "pdf";
 
+export function getInvoicePreviewTabId(tabId: InvoicePreviewTabId) {
+  return `invoice-preview-tab-${tabId}`;
+}
+
+export function getInvoicePreviewPanelId(tabId: InvoicePreviewTabId) {
+  return `invoice-preview-panel-${tabId}`;
+}
+
 export type InvoicePreviewRowModel = {
   label: string;
   value: string;
@@ -157,13 +165,18 @@ export default function InvoicePreviewTabs() {
 
   return (
     <section className="min-w-0 rounded-xl border border-[#E8EBF3] bg-white">
-      <div className="flex gap-1 border-b border-[#E8EBF3] p-1.5">
+      <div role="tablist" aria-label="Invoice preview" className="flex gap-1 border-b border-[#E8EBF3] p-1.5">
         {invoicePreviewTabs.map((tab) => {
           const active = tab.id === model.activeTab;
           return (
             <button
               key={tab.id}
+              id={getInvoicePreviewTabId(tab.id)}
               type="button"
+              role="tab"
+              aria-selected={active}
+              aria-controls={getInvoicePreviewPanelId(tab.id)}
+              tabIndex={active ? 0 : -1}
               onClick={() => setActiveTab((current) => resolveInvoicePreviewTab(current, tab.id))}
               className={`min-w-0 flex-1 rounded-lg px-2.5 py-2 text-xs font-semibold transition ${
                 active
@@ -177,7 +190,12 @@ export default function InvoicePreviewTabs() {
         })}
       </div>
 
-      <div className="min-w-0 p-3 sm:p-4">
+      <div
+        id={getInvoicePreviewPanelId(model.activeTab)}
+        role="tabpanel"
+        aria-labelledby={getInvoicePreviewTabId(model.activeTab)}
+        className="min-w-0 p-3 sm:p-4"
+      >
         {model.panel.kind === "pdf" ? <InvoicePreview compact={model.panel.compact} /> : null}
         {model.panel.kind === "payer" ? <PayerPreview panel={model.panel} /> : null}
         {model.panel.kind === "email" ? <EmailPreview panel={model.panel} /> : null}
