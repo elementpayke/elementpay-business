@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import {
   dashboardNavGroups,
+  getDashboardNavItemActiveState,
   isDashboardNavItemActive,
 } from "@/components/dashboard/dashboardNav";
 
@@ -51,28 +52,58 @@ export default function DashboardSidebar({ mobile = false, onClose }: DashboardS
             </p>
             <div className="space-y-1">
               {group.items.map((item) => {
-                const active = isDashboardNavItemActive(item, pathname);
+                const activeState = getDashboardNavItemActiveState(item, pathname);
                 const Icon = item.icon;
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={active ? "page" : undefined}
-                    onClick={onClose}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
-                      active
-                        ? "bg-primary-100/70 font-semibold text-primary-700"
-                        : "font-medium text-[#4D556D] hover:bg-[#F4F6FA] hover:text-[#1F2640]"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                    {item.badge ? (
-                      <span className="rounded-full bg-[#FFE8EE] px-2 py-0.5 text-[10px] font-semibold text-[#FF6B8E]">
-                        {item.badge}
-                      </span>
+                  <div key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={activeState.active && !item.children?.length ? "page" : undefined}
+                      onClick={onClose}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+                        activeState.active
+                          ? "bg-primary-100/70 font-semibold text-primary-700"
+                          : "font-medium text-[#4D556D] hover:bg-[#F4F6FA] hover:text-[#1F2640]"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      {item.badge ? (
+                        <span className="rounded-full bg-[#FFE8EE] px-2 py-0.5 text-[10px] font-semibold text-[#FF6B8E]">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </Link>
+                    {item.children?.length ? (
+                      <div className="mt-1 space-y-1 pl-7">
+                        {item.children.map((child) => {
+                          const childActive = isDashboardNavItemActive(child, pathname);
+                          const ChildIcon = child.icon;
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              aria-current={childActive ? "page" : undefined}
+                              onClick={onClose}
+                              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] transition ${
+                                childActive
+                                  ? "bg-[#F7F9FF] font-semibold text-primary-700"
+                                  : "font-medium text-[#626B84] hover:bg-[#F4F6FA] hover:text-[#1F2640]"
+                              }`}
+                            >
+                              <ChildIcon className="h-3.5 w-3.5 shrink-0" />
+                              <span className="min-w-0 flex-1 truncate">{child.label}</span>
+                              {child.badge ? (
+                                <span className="rounded-full bg-[#FFE8EE] px-2 py-0.5 text-[10px] font-semibold text-[#FF6B8E]">
+                                  {child.badge}
+                                </span>
+                              ) : null}
+                            </Link>
+                          );
+                        })}
+                      </div>
                     ) : null}
-                  </Link>
+                  </div>
                 );
               })}
             </div>
