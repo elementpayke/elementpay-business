@@ -177,7 +177,7 @@ export async function registerBusiness(data: BusinessSignupSchema): Promise<Sign
 }
 
 export async function login(data: LoginSchema): Promise<Token> {
-  const res = await fetch(`${API_BASE}/api/auth/users/login`, {
+  const res = await fetch(`${API_BASE}/api/auth/businesses/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
