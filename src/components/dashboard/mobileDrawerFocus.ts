@@ -20,3 +20,10 @@ export function getDrawerFocusWrapTarget<T>(
 
   return null;
 }
+
+export function shouldCloseMobileDrawerForDesktopBreakpoint(
+  sidebarOpen: boolean,
+  matchesDesktop: boolean,
+): boolean {
+  return sidebarOpen && matchesDesktop;
+}

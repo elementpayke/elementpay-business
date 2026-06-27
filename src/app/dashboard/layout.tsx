@@ -6,7 +6,10 @@ import { Loader2 } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import DevStatusBar from "@/components/dashboard/DevStatusBar";
-import { getDrawerFocusWrapTarget } from "@/components/dashboard/mobileDrawerFocus";
+import {
+  getDrawerFocusWrapTarget,
+  shouldCloseMobileDrawerForDesktopBreakpoint,
+} from "@/components/dashboard/mobileDrawerFocus";
 import { useAuth } from "@/lib/AuthContext";
 import { devLog } from "@/lib/devlog";
 
@@ -25,6 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const lastAuthRef = useRef<boolean | null>(null);
   const mobileDrawerRef = useRef<HTMLDivElement | null>(null);
   const sidebarOpenerRef = useRef<HTMLElement | null>(null);
+  const shouldRestoreSidebarFocusRef = useRef(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // The /auth/me business.kyb_verified flag is the sole source of truth for
@@ -76,6 +80,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!sidebarOpen) return;
 
+    const desktopMediaQuery = window.matchMedia("(min-width: 1024px)");
+    const closeForDesktopBreakpoint = (matchesDesktop: boolean) => {
+      if (!shouldCloseMobileDrawerForDesktopBreakpoint(sidebarOpen, matchesDesktop)) return;
+
+      shouldRestoreSidebarFocusRef.current = false;
+      sidebarOpenerRef.current = null;
+      setSidebarOpen(false);
+    };
+
+    closeForDesktopBreakpoint(desktopMediaQuery.matches);
+
+    const handleDesktopBreakpointChange = (event: MediaQueryListEvent) => {
+      closeForDesktopBreakpoint(event.matches);
+    };
+
+    desktopMediaQuery.addEventListener("change", handleDesktopBreakpointChange);
+
+    return () => {
+      desktopMediaQuery.removeEventListener("change", handleDesktopBreakpointChange);
+    };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+
     const drawer = mobileDrawerRef.current;
     const focusableElements = getDrawerFocusableElements(drawer);
     const initialFocusTarget = focusableElements[0] ?? drawer;
@@ -87,15 +116,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (sidebarOpen) return;
 
     const opener = sidebarOpenerRef.current;
-    if (opener?.isConnected) {
+    if (shouldRestoreSidebarFocusRef.current && opener?.isConnected) {
       opener.focus();
     }
+    shouldRestoreSidebarFocusRef.current = true;
     sidebarOpenerRef.current = null;
   }, [sidebarOpen]);
 
   function openSidebar() {
     const activeElement = document.activeElement;
     sidebarOpenerRef.current = activeElement instanceof HTMLElement ? activeElement : null;
+    shouldRestoreSidebarFocusRef.current = true;
     setSidebarOpen(true);
   }
 
