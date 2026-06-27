@@ -18,7 +18,16 @@ describe("dashboard navigation model", () => {
     expect(isDashboardNavItemActive("/dashboard", "/dashboard")).toBe(true);
     expect(isDashboardNavItemActive("/dashboard", "/dashboard/wallets")).toBe(false);
     expect(isDashboardNavItemActive("/dashboard/invoices/create", "/dashboard/invoices/create")).toBe(true);
-    expect(isDashboardNavItemActive("/dashboard/invoices/create", "/dashboard/invoices/create/preview")).toBe(true);
     expect(isDashboardNavItemActive("/dashboard/wallets", "/dashboard/wallets/usd")).toBe(true);
+    expect(isDashboardNavItemActive("/dashboard/wallets", "/dashboard/wallets-foo")).toBe(false);
+  });
+
+  it("keeps invoicing active across invoice routes", () => {
+    const invoicingItem = dashboardNavGroups
+      .flatMap((group) => group.items)
+      .find((item) => item.href === "/dashboard/invoices/create");
+
+    expect(invoicingItem).toBeDefined();
+    expect(isDashboardNavItemActive(invoicingItem!, "/dashboard/invoices/preview")).toBe(true);
   });
 });

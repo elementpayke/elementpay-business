@@ -18,6 +18,7 @@ import type { ComponentType } from "react";
 export type DashboardNavItem = {
   label: string;
   href: string;
+  activePrefix?: string;
   badge?: string;
   icon: ComponentType<{ className?: string }>;
 };
@@ -48,7 +49,12 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
   {
     label: "Business tools",
     items: [
-      { label: "Invoicing", href: "/dashboard/invoices/create", icon: ReceiptText },
+      {
+        label: "Invoicing",
+        href: "/dashboard/invoices/create",
+        activePrefix: "/dashboard/invoices",
+        icon: ReceiptText,
+      },
       { label: "Reports", href: "/dashboard/reports", icon: FileText },
       { label: "Verification", href: "/dashboard/verification", badge: "Tier 2", icon: ShieldCheck },
       { label: "Developer", href: "/dashboard/developer", icon: Code2 },
@@ -63,7 +69,15 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
   },
 ];
 
-export function isDashboardNavItemActive(href: string, pathname: string): boolean {
+export function isDashboardNavItemActive(
+  item: Pick<DashboardNavItem, "href" | "activePrefix"> | string,
+  pathname: string,
+): boolean {
+  const href = typeof item === "string" ? item : item.href;
+  const activePrefix = typeof item === "string" ? undefined : item.activePrefix;
+
   if (href === "/dashboard") return pathname === href;
-  return pathname === href || pathname.startsWith(`${href}/`);
+
+  const prefix = activePrefix ?? href;
+  return pathname === href || pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
