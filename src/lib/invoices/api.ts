@@ -80,9 +80,16 @@ function buildDraftPayload(
     unit_price: item.unitPrice,
     amount: item.amount,
   }));
+  const supportingDocuments = payload.supportingDocuments.map((document) => ({
+    id: document.id,
+    name: document.name,
+    size_bytes: document.sizeBytes,
+    mime_type: document.mimeType,
+  }));
 
   return {
     line_items: lineItems,
+    supporting_documents: supportingDocuments,
     currency: payload.invoice.currency || "USD",
     notes: payload.invoice.note,
     client_name: payload.client.fullName || "",
@@ -92,7 +99,7 @@ function buildDraftPayload(
   };
 }
 
-function buildDraftBody(payload: InvoiceCreatePayload) {
+export function buildDraftRequestBody(payload: InvoiceCreatePayload) {
   return {
     title: payload.invoice.title || null,
     due_date: payload.invoice.dueDate || null,
@@ -112,7 +119,7 @@ export async function createDraft(
 ): Promise<InvoiceDraft> {
   const res = await authedFetch(`${API_BASE}/api/v1/invoices/drafts`, {
     method: "POST",
-    body: JSON.stringify(buildDraftBody(payload)),
+    body: JSON.stringify(buildDraftRequestBody(payload)),
   });
   return parseResponse(res);
 }
@@ -125,7 +132,7 @@ export async function updateDraft(
     `${API_BASE}/api/v1/invoices/drafts/${encodeURIComponent(String(draftId))}`,
     {
       method: "PUT",
-      body: JSON.stringify(buildDraftBody(payload)),
+      body: JSON.stringify(buildDraftRequestBody(payload)),
     },
   );
   return parseResponse(res);

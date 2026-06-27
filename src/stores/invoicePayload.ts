@@ -10,6 +10,7 @@ import {
   type InvoiceDraft,
   type LineItem,
   type PartyDetails,
+  type SupportingDocumentMetadata,
 } from "@/stores/invoiceStore";
 
 export type InvoiceStatus = "draft" | "issued";
@@ -74,6 +75,7 @@ export type InvoiceCreatePayload = {
     discount: { enabled: boolean; percent: number };
     shipping: { enabled: boolean; amount: number };
   };
+  supportingDocuments: SupportingDocumentMetadata[];
   totals: InvoicePayloadTotals;
   meta: {
     source: "elementpay-dashboard";
@@ -153,6 +155,17 @@ function serializePaymentMethod(draft: InvoiceDraft): InvoicePayloadPaymentMetho
   };
 }
 
+function serializeSupportingDocuments(
+  documents: SupportingDocumentMetadata[],
+): SupportingDocumentMetadata[] {
+  return documents.map((document) => ({
+    id: document.id,
+    name: document.name,
+    sizeBytes: document.sizeBytes,
+    mimeType: document.mimeType,
+  }));
+}
+
 export function buildInvoicePayload(
   draft: InvoiceDraft,
   status: InvoiceStatus,
@@ -185,6 +198,7 @@ export function buildInvoicePayload(
         amount: Number(draft.shippingAmount) || 0,
       },
     },
+    supportingDocuments: serializeSupportingDocuments(draft.supportingDocuments),
     totals,
     meta: {
       source: "elementpay-dashboard",

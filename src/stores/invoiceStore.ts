@@ -20,6 +20,13 @@ export type LineItem = {
   unitPrice: number;
 };
 
+export type SupportingDocumentMetadata = {
+  id: string;
+  name: string;
+  sizeBytes: number;
+  mimeType: string;
+};
+
 export type InvoiceDraft = {
   invoiceTitle: string;
   invoiceId: string;
@@ -38,6 +45,7 @@ export type InvoiceDraft = {
   discountPercent: number;
   shippingEnabled: boolean;
   shippingAmount: number;
+  supportingDocuments: SupportingDocumentMetadata[];
   note: string;
 };
 
@@ -84,6 +92,7 @@ function createInitialDraft(): InvoiceDraft {
     discountPercent: 0,
     shippingEnabled: false,
     shippingAmount: 0,
+    supportingDocuments: [],
     note: "",
   };
 }
@@ -110,6 +119,8 @@ type InvoiceState = {
   removeLineItem: (id: string) => void;
   clearLineItems: () => void;
   updateLineItem: (id: string, patch: Partial<Omit<LineItem, "id">>) => void;
+  addSupportingDocument: (metadata: SupportingDocumentMetadata) => void;
+  removeSupportingDocument: (id: string) => void;
 };
 
 export const useInvoiceStore = create<InvoiceState>()((set) => ({
@@ -137,6 +148,20 @@ export const useInvoiceStore = create<InvoiceState>()((set) => ({
       draft: {
         ...state.draft,
         lineItems: state.draft.lineItems.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+      },
+    })),
+  addSupportingDocument: (metadata) =>
+    set((state) => ({
+      draft: {
+        ...state.draft,
+        supportingDocuments: [...state.draft.supportingDocuments, metadata],
+      },
+    })),
+  removeSupportingDocument: (id) =>
+    set((state) => ({
+      draft: {
+        ...state.draft,
+        supportingDocuments: state.draft.supportingDocuments.filter((document) => document.id !== id),
       },
     })),
 }));
