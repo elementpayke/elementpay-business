@@ -14,4 +14,9 @@ describe("formatAssistantMessage", () => {
       "<think>planning</think>\n\nHello from treasury.";
     expect(formatAssistantMessage(raw)).toBe("Hello from treasury.");
   });
+
+  it("removes unclosed thinking blocks from local model output", () => {
+    const raw = "<think>still thinking\nmore internal text";
+    expect(formatAssistantMessage(raw)).toBe("");
+  });
 });
