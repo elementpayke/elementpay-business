@@ -1,0 +1,131 @@
+<h2>Where should ElementPay navigation live?</h2>
+<p class="subtitle">Click the layout that feels closest to the direction you want. I’ll use your choice to shape the invoice creation redesign next.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a-left-sidebar" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:260px;display:grid;grid-template-columns:86px 1fr;background:#eef2f7;border-radius:14px;overflow:hidden;border:1px solid #dbe2ec">
+        <div style="background:#fff;border-right:1px solid #dbe2ec;padding:14px 10px;display:flex;flex-direction:column;gap:10px">
+          <div style="height:26px;width:42px;border-radius:8px;background:#0b1b2d"></div>
+          <div style="height:22px;border-radius:7px;background:#e8edf4"></div>
+          <div style="height:22px;border-radius:7px;background:#e8edf4"></div>
+          <div style="height:22px;border-radius:7px;background:#dce8ff"></div>
+          <div style="height:22px;border-radius:7px;background:#e8edf4"></div>
+          <div style="margin-top:auto;height:22px;border-radius:7px;background:#e8edf4"></div>
+        </div>
+        <div style="display:grid;grid-template-rows:44px 1fr">
+          <div style="background:#fff;border-bottom:1px solid #dbe2ec;padding:8px 14px;display:flex;justify-content:flex-end;gap:8px">
+            <div style="height:26px;width:150px;border-radius:8px;background:#f1f4f8"></div>
+            <div style="height:26px;width:92px;border-radius:8px;background:#f1f4f8"></div>
+          </div>
+          <div style="padding:18px;display:grid;grid-template-columns:1.15fr .85fr;gap:14px">
+            <div style="background:#fff;border:1px solid #dbe2ec;border-radius:12px;padding:14px">
+              <div style="height:20px;width:120px;border-radius:7px;background:#111827"></div>
+              <div style="height:42px;border-radius:9px;background:#eef2f7;margin-top:18px"></div>
+              <div style="display:grid;grid-template-columns:1fr .4fr .55fr;gap:8px;margin-top:12px">
+                <div style="height:38px;border-radius:9px;background:#eef2f7"></div>
+                <div style="height:38px;border-radius:9px;background:#eef2f7"></div>
+                <div style="height:38px;border-radius:9px;background:#eef2f7"></div>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid #dbe2ec;border-radius:12px;padding:14px">
+              <div style="height:26px;width:80px;border-radius:7px;background:#111827"></div>
+              <div style="height:1px;background:#dbe2ec;margin:16px 0"></div>
+              <div style="display:grid;gap:8px">
+                <div style="height:12px;border-radius:6px;background:#edf1f6"></div>
+                <div style="height:12px;border-radius:6px;background:#edf1f6"></div>
+                <div style="height:12px;border-radius:6px;background:#edf1f6"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Full Left Sidebar</h3>
+      <p>Move primary dashboard navigation into a left rail, keep search/profile/actions in a top utility bar, and let invoice pages feel like focused workspaces.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b-icon-rail" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:260px;display:grid;grid-template-columns:54px 1fr;background:#eef2f7;border-radius:14px;overflow:hidden;border:1px solid #dbe2ec">
+        <div style="background:#0b1b2d;padding:14px 10px;display:flex;flex-direction:column;gap:12px;align-items:center">
+          <div style="height:26px;width:26px;border-radius:8px;background:#fff"></div>
+          <div style="height:28px;width:28px;border-radius:9px;background:#25364a"></div>
+          <div style="height:28px;width:28px;border-radius:9px;background:#25364a"></div>
+          <div style="height:28px;width:28px;border-radius:9px;background:#fff"></div>
+          <div style="height:28px;width:28px;border-radius:9px;background:#25364a"></div>
+        </div>
+        <div style="display:grid;grid-template-rows:48px 1fr">
+          <div style="background:#fff;border-bottom:1px solid #dbe2ec;padding:9px 14px;display:flex;justify-content:space-between;gap:8px">
+            <div style="height:28px;width:170px;border-radius:9px;background:#f1f4f8"></div>
+            <div style="height:28px;width:230px;border-radius:9px;background:#f1f4f8"></div>
+          </div>
+          <div style="padding:18px;display:grid;grid-template-columns:1fr 300px;gap:14px">
+            <div style="display:grid;gap:12px">
+              <div style="height:86px;border-radius:12px;background:#fff;border:1px solid #dbe2ec"></div>
+              <div style="height:106px;border-radius:12px;background:#fff;border:1px solid #dbe2ec"></div>
+            </div>
+            <div style="height:204px;border-radius:12px;background:#fff;border:1px solid #dbe2ec"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Icon Rail</h3>
+      <p>A slimmer version with icons only by default. It gives maximum canvas space, but labels require hover/tooltips or expansion.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c-top-tabs-plus-workspace" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:260px;background:#eef2f7;border-radius:14px;overflow:hidden;border:1px solid #dbe2ec;display:grid;grid-template-rows:46px 44px 1fr">
+        <div style="background:#fff;border-bottom:1px solid #dbe2ec;padding:9px 16px;display:flex;justify-content:space-between">
+          <div style="height:28px;width:130px;border-radius:9px;background:#0b1b2d"></div>
+          <div style="height:28px;width:260px;border-radius:9px;background:#f1f4f8"></div>
+        </div>
+        <div style="background:#fff;border-bottom:1px solid #dbe2ec;padding:10px 16px;display:flex;gap:10px">
+          <div style="height:22px;width:82px;border-radius:7px;background:#dce8ff"></div>
+          <div style="height:22px;width:82px;border-radius:7px;background:#edf1f6"></div>
+          <div style="height:22px;width:82px;border-radius:7px;background:#edf1f6"></div>
+          <div style="height:22px;width:82px;border-radius:7px;background:#edf1f6"></div>
+        </div>
+        <div style="padding:18px;display:grid;grid-template-columns:1fr 320px;gap:14px">
+          <div style="background:#fff;border:1px solid #dbe2ec;border-radius:12px;padding:14px">
+            <div style="height:20px;width:120px;border-radius:7px;background:#111827"></div>
+            <div style="height:42px;border-radius:9px;background:#eef2f7;margin-top:18px"></div>
+            <div style="height:42px;border-radius:9px;background:#eef2f7;margin-top:10px"></div>
+          </div>
+          <div style="background:#fff;border:1px solid #dbe2ec;border-radius:12px;padding:14px">
+            <div style="height:26px;width:80px;border-radius:7px;background:#111827"></div>
+            <div style="height:130px;border-radius:9px;background:#f3f6fa;margin-top:14px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Keep Top Tabs, Add Workspace Split</h3>
+      <p>Least disruptive: keep the current top navigation, but make invoice creation look closer to the reference with a live preview panel.</p>
+    </div>
+  </div>
+</div>
+
+<div class="pros-cons">
+  <div class="pros">
+    <h4>My recommendation</h4>
+    <ul>
+      <li>Option A fits a finance dashboard with many recurring tools.</li>
+      <li>It matches the reference and makes invoice creation feel calmer.</li>
+      <li>It gives room for “More” items like Invoicing, Bulk Pay, Settings, and Support.</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>Watch-outs</h4>
+    <ul>
+      <li>Mobile needs a drawer or bottom bar fallback.</li>
+      <li>The current top tabs should be retired carefully so active states do not split attention.</li>
+      <li>The invoice editor still needs a responsive fallback below desktop widths.</li>
+    </ul>
+  </div>
+</div>
