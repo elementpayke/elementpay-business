@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   Banknote,
   Bot,
+  BrainCircuit,
   Code2,
   FileText,
   Headphones,
@@ -10,7 +11,6 @@ import {
   Send,
   Settings,
   ShieldCheck,
-  Sparkles,
   Upload,
   Wallet,
 } from "lucide-react";
@@ -62,10 +62,10 @@ export const dashboardNavGroups: DashboardNavGroup[] = [
         icon: Bot,
         children: [
           {
-            label: "Treasury AI",
+            label: "Nuru",
             href: "/dashboard/treasury-copilot",
             badge: "Beta",
-            icon: Sparkles,
+            icon: BrainCircuit,
           },
         ],
       },

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Code2, LayoutDashboard, ShieldCheck, Wallet, ArrowLeftRight, FileText, Sparkles } from "lucide-react";
+import { ArrowLeftRight, BrainCircuit, Code2, FileText, LayoutDashboard, ShieldCheck, Wallet } from "lucide-react";
 import { dashboardTabs } from "@/components/dashboard/dashboardData";
 
 const iconMap = {
   Dashboard: LayoutDashboard,
   Transactions: ArrowLeftRight,
   Wallets: Wallet,
-  "Treasury AI": Sparkles,
+  Nuru: BrainCircuit,
   Reports: FileText,
   Verification: ShieldCheck,
   Developer: Code2,

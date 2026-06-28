@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { BrainCircuit } from "lucide-react";
 import {
   dashboardNavGroups,
   getDashboardNavItemActiveState,
   isDashboardNavItemActive,
 } from "@/components/dashboard/dashboardNav";
+import { dashboardTabs, quickActions } from "@/components/dashboard/dashboardData";
 
 describe("dashboard navigation model", () => {
   it("groups primary dashboard routes for the left sidebar", () => {
@@ -18,7 +20,7 @@ describe("dashboard navigation model", () => {
     );
   });
 
-  it("puts Agents under Business tools with Treasury AI as its first child", () => {
+  it("puts Agents under Business tools with Nuru as its first child", () => {
     const mainGroup = dashboardNavGroups.find((group) => group.label === "Main");
     const businessToolsGroup = dashboardNavGroups.find((group) => group.label === "Business tools");
 
@@ -27,10 +29,22 @@ describe("dashboard navigation model", () => {
     const agentsItem = businessToolsGroup?.items.find((item) => item.label === "Agents");
     expect(agentsItem).toBeDefined();
     expect(agentsItem?.href).toBe("/dashboard/treasury-copilot");
-    expect(agentsItem?.children?.map((item) => item.label)).toEqual(["Treasury AI"]);
+    expect(agentsItem?.children?.map((item) => item.label)).toEqual(["Nuru"]);
     expect(agentsItem?.children?.[0]).toMatchObject({
       href: "/dashboard/treasury-copilot",
       badge: "Beta",
+      icon: BrainCircuit,
+    });
+  });
+
+  it("labels the treasury copilot entry as Nuru across dashboard shortcuts", () => {
+    expect(dashboardTabs.find((tab) => tab.href === "/dashboard/treasury-copilot")).toMatchObject({
+      label: "Nuru",
+      badge: "Beta",
+    });
+    expect(quickActions.find((action) => action.href === "/dashboard/treasury-copilot")).toMatchObject({
+      title: "Nuru",
+      description: "Account-aware invoice and payout assistance",
     });
   });
 
@@ -51,7 +65,7 @@ describe("dashboard navigation model", () => {
     expect(isDashboardNavItemActive(invoicingItem!, "/dashboard/invoices/preview")).toBe(true);
   });
 
-  it("marks Agents active when Treasury AI is active", () => {
+  it("marks Agents active when Nuru is active", () => {
     const agentsItem = dashboardNavGroups
       .find((group) => group.label === "Business tools")
       ?.items.find((item) => item.label === "Agents");

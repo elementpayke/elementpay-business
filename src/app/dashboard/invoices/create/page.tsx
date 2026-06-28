@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import InvoiceWorkspace from "@/components/invoices/InvoiceWorkspace";
 import { useInvoiceStore } from "@/stores/invoiceStore";
 import { buildInvoicePayload, validateInvoiceDraft } from "@/stores/invoicePayload";
-import { createDraft, updateDraft } from "@/lib/invoices/api";
+import { saveInvoiceDraft } from "@/lib/invoices/api";
 
 export default function CreateInvoicePage() {
   const router = useRouter();
@@ -35,10 +35,7 @@ export default function CreateInvoicePage() {
     setSavingDraft(true);
     try {
       const payload = buildInvoicePayload(draft, "draft");
-      const saved =
-        draftId != null
-          ? await updateDraft(draftId, payload)
-          : await createDraft(payload);
+      const saved = await saveInvoiceDraft(payload, draftId);
       setDraftId(saved.id);
       setDraftStatus("Draft saved");
     } catch (err) {
@@ -60,10 +57,7 @@ export default function CreateInvoicePage() {
     setSavingDraft(true);
     try {
       const payload = buildInvoicePayload(draft, "draft");
-      const saved =
-        draftId != null
-          ? await updateDraft(draftId, payload)
-          : await createDraft(payload);
+      const saved = await saveInvoiceDraft(payload, draftId);
       setDraftId(saved.id);
       router.push("/dashboard/invoices/preview");
     } catch (err) {

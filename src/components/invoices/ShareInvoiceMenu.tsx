@@ -8,10 +8,9 @@ import {
 } from "@/stores/invoicePayload";
 import { useInvoiceStore } from "@/stores/invoiceStore";
 import {
-  createDraft,
   getPublicLink,
   issueInvoice,
-  updateDraft,
+  saveInvoiceDraft,
 } from "@/lib/invoices/api";
 
 type ShareInvoiceMenuProps = {
@@ -94,10 +93,7 @@ export default function ShareInvoiceMenu({
         throw new Error(validation[0].message);
       }
       const payload = buildInvoicePayload(draft, "issued");
-      const savedDraft =
-        draftId != null
-          ? await updateDraft(draftId, payload)
-          : await createDraft(payload);
+      const savedDraft = await saveInvoiceDraft(payload, draftId);
       setDraftId(savedDraft.id);
       const inv = await issueInvoice({
         draftId: savedDraft.id,

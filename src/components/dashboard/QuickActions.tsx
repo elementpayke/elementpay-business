@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { FilePlus2, Plus, Send, Sparkles, Users } from "lucide-react";
+import { BrainCircuit, FilePlus2, Plus, Send, Users } from "lucide-react";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
 import { quickActions } from "@/components/dashboard/dashboardData";
 
 const iconMap = {
   "Send Payment": Send,
   "Bulk Payment": Users,
-  "Treasury Copilot": Sparkles,
+  Nuru: BrainCircuit,
   "Create Invoice": FilePlus2,
   "Deposit Funds": Plus,
 };

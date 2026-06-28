@@ -1,7 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bot, Loader2, Paperclip, Send, Sparkles, X } from "lucide-react";
+import {
+  Bot,
+  BrainCircuit,
+  FilePlus2,
+  FileText,
+  Loader2,
+  Paperclip,
+  Send,
+  Wallet,
+  X,
+} from "lucide-react";
 import { cardClassName } from "@/components/dashboard/DashboardPrimitives";
 import AssistantMessageBubble from "@/components/treasury/AssistantMessageBubble";
 import InvoiceIntakeCard from "@/components/treasury/InvoiceIntakeCard";
@@ -20,6 +30,10 @@ import {
   parseInvoiceIntakeRequest,
   type InvoiceIntakeDraft,
 } from "@/lib/treasury/invoiceIntake";
+import {
+  nuruPromptOptions,
+  type NuruPromptOptionId,
+} from "@/lib/treasury/promptOptions";
 
 type ChatMessage = TreasuryChatMessage;
 
@@ -30,6 +44,12 @@ type UiChatMessage = ChatMessage & {
 
 const TEXT_EXTENSIONS = /\.(txt|csv|md|json)$/i;
 const MAX_DOC_CHARS = 24_000;
+const promptOptionIcons: Record<NuruPromptOptionId, typeof BrainCircuit> = {
+  "create-invoice": FilePlus2,
+  "check-balance": Wallet,
+  "preview-payout": Send,
+  "review-document": FileText,
+};
 
 function messageTimestamp(date = new Date()): string {
   return date.toLocaleTimeString([], {
@@ -53,7 +73,7 @@ export default function TreasuryCopilotChat() {
     {
       role: "assistant",
       content:
-        "I'm ElementPay's financial assistant. I can help with your account — balances, contacts, invoices, invoice drafts, payout previews, transactions, and payments.\n\nI use your authenticated ElementPay account context, so I won't ask for business details that are already on file. Anything that moves money or changes records waits for your confirmation.\n\nTry: \"What's our treasury balance?\" or upload a supplier invoice CSV and say \"Create drafts from this.\"",
+        "I'm Nuru, ElementPay's financial assistant. I can help with your account — balances, contacts, invoices, invoice drafts, payout previews, transactions, and payments.\n\nI use your authenticated ElementPay account context, so I won't ask for business details that are already on file. Anything that moves money or changes records waits for your confirmation.\n\nTry: \"What's our treasury balance?\" or upload a supplier invoice CSV and say \"Create drafts from this.\"",
     },
   ]);
   const [input, setInput] = useState("");
@@ -71,6 +91,7 @@ export default function TreasuryCopilotChat() {
   const invoiceIntakeRef = useRef<InvoiceIntakeDraft | null>(null);
   const submitInFlightRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -103,6 +124,18 @@ export default function TreasuryCopilotChat() {
     invoiceIntakeRef.current = draft;
     setInvoiceIntake(draft);
   }, []);
+
+  const selectPromptOption = useCallback(
+    (prompt: string) => {
+      if (loading) return;
+      setInput(prompt);
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        inputRef.current?.setSelectionRange(prompt.length, prompt.length);
+      });
+    },
+    [loading],
+  );
 
   const submitUserMessage = useCallback(
     async (
@@ -297,9 +330,9 @@ export default function TreasuryCopilotChat() {
       )}
     >
       <div className="flex items-center gap-2 border-b border-[#EFF1F7] px-5 py-4">
-        <Sparkles className="h-5 w-5 text-primary-500" />
+        <BrainCircuit className="h-5 w-5 text-primary-500" />
         <div>
-          <h2 className="text-sm font-semibold text-[#171D32]">Financial Assistant</h2>
+          <h2 className="text-sm font-semibold text-[#171D32]">Nuru</h2>
           <p className="text-xs text-[#8E93A7]">
             Balances · invoices · payouts
           </p>
@@ -376,6 +409,26 @@ export default function TreasuryCopilotChat() {
           </div>
         ) : null}
 
+        {!invoiceIntake ? (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {nuruPromptOptions.map((option) => {
+              const Icon = promptOptionIcons[option.id];
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => selectPromptOption(option.prompt)}
+                  disabled={loading}
+                  className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg border border-[#E7EAF3] bg-white px-2.5 text-xs font-medium text-[#4D556D] transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 disabled:cursor-not-allowed disabled:bg-[#F4F6FB] disabled:text-[#A7ADC0] disabled:hover:border-[#E7EAF3]"
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
         <div className="flex gap-2">
           <input
             ref={fileRef}
@@ -394,6 +447,7 @@ export default function TreasuryCopilotChat() {
             <Paperclip className="h-4 w-4" />
           </button>
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

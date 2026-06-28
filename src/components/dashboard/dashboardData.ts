@@ -77,7 +77,7 @@ export const dashboardTabs: TabItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Transactions", href: "/dashboard/transactions" },
   { label: "Wallets", href: "/dashboard/wallets" },
-  { label: "Treasury AI", href: "/dashboard/treasury-copilot", badge: "Beta" },
+  { label: "Nuru", href: "/dashboard/treasury-copilot", badge: "Beta" },
   { label: "Reports", href: "/dashboard/reports" },
   { label: "Verification", href: "/dashboard/verification", badge: "Tier 2" },
   { label: "Developer", href: "/dashboard/developer" },
@@ -97,7 +97,7 @@ export const quickActions: QuickAction[] = [
     href: "/dashboard/bulk-payment",
   },
   {
-    title: "Treasury Copilot",
+    title: "Nuru",
     description: "Account-aware invoice and payout assistance",
     tone: "primary",
     href: "/dashboard/treasury-copilot",

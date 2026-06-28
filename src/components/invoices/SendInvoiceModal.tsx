@@ -7,15 +7,19 @@ import {
   buildInvoicePayload,
   validateInvoiceDraft,
 } from "@/stores/invoicePayload";
-import { useInvoiceStore } from "@/stores/invoiceStore";
 import {
-  createDraft,
+  type IssuedInvoiceSummary,
+  useInvoiceStore,
+} from "@/stores/invoiceStore";
+import {
   getPublicLink,
   issueInvoice,
+  saveInvoiceDraft,
   sendInvoice,
-  updateDraft,
   type SendVia,
 } from "@/lib/invoices/api";
+import { buildInvoiceWhatsAppShareUrl } from "@/lib/invoices/share";
+import { buildInvoiceSendPlan } from "@/lib/invoices/sendPlan";
 
 type SendChannel = "email" | "whatsapp";
 
@@ -28,15 +32,6 @@ type SendInvoiceModalProps = {
   onEdit: () => void;
   onSent?: (channels: SendChannel[]) => void;
 };
-
-function channelsToSendVia(channels: Set<SendChannel>): SendVia {
-  const hasEmail = channels.has("email");
-  const hasWhatsApp = channels.has("whatsapp");
-  if (hasEmail && hasWhatsApp) return "both";
-  if (hasEmail) return "email";
-  if (hasWhatsApp) return "whatsapp";
-  return "none";
-}
 
 export default function SendInvoiceModal(props: SendInvoiceModalProps) {
   if (!props.open) return null;
@@ -78,38 +73,57 @@ function SendInvoiceModalBody({
 
   async function ensureDraftSaved(): Promise<number> {
     const payload = buildInvoicePayload(draft, "issued");
-    const saved =
-      draftId != null
-        ? await updateDraft(draftId, payload)
-        : await createDraft(payload);
+    const saved = await saveInvoiceDraft(payload, draftId);
     setDraftId(saved.id);
     return saved.id;
+  }
+
+  async function ensureIssuedInvoice(
+    sendVia: SendVia = "none",
+  ): Promise<IssuedInvoiceSummary> {
+    if (issued?.id != null) return issued;
+
+    const savedDraftId = await ensureDraftSaved();
+    const inv = await issueInvoice({
+      draftId: savedDraftId,
+      sendVia,
+    });
+    const nextIssued = {
+      id: inv.id,
+      invoiceNumber: inv.invoice_number,
+      publicToken: inv.public_token,
+    };
+    setIssued(nextIssued);
+    return nextIssued;
+  }
+
+  async function openWhatsAppShare(invoice: IssuedInvoiceSummary) {
+    const link = await getPublicLink(invoice.id);
+    const payload = buildInvoicePayload(draft, "issued");
+    const target = buildInvoiceWhatsAppShareUrl({
+      publicUrl: link.public_url,
+      invoiceNumber: invoice.invoiceNumber,
+      clientName: payload.client.fullName,
+      toPhone: payload.client.phone.e164 ?? payload.client.phone.raw,
+    });
+    const opened = window.open(target, "_blank");
+    if (opened) {
+      opened.opener = null;
+    } else {
+      window.location.href = target;
+    }
   }
 
   async function handleCopyLink() {
     setSendError(null);
     setLinkLoading(true);
     try {
-      let invoiceId = issued?.id ?? null;
-      if (invoiceId == null) {
-        // Issue (without sending) so we have a public link.
-        const validation = validateInvoiceDraft(draft, "issued");
-        if (validation.length > 0) {
-          throw new Error(validation[0].message);
-        }
-        const savedDraftId = await ensureDraftSaved();
-        const inv = await issueInvoice({
-          draftId: savedDraftId,
-          sendVia: "none",
-        });
-        invoiceId = inv.id;
-        setIssued({
-          id: inv.id,
-          invoiceNumber: inv.invoice_number,
-          publicToken: inv.public_token,
-        });
+      const validation = validateInvoiceDraft(draft, "issued");
+      if (validation.length > 0) {
+        throw new Error(validation[0].message);
       }
-      const link = await getPublicLink(invoiceId);
+      const invoice = await ensureIssuedInvoice();
+      const link = await getPublicLink(invoice.id);
       await navigator.clipboard.writeText(link.public_url);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
@@ -132,35 +146,31 @@ function SendInvoiceModalBody({
     }
     setSendState("sending");
     try {
-      const sendVia = channelsToSendVia(channels);
-      if (issued?.id != null) {
-        // Already issued — call the standalone send endpoint.
+      const selectedChannels = Array.from(channels);
+      const plan = buildInvoiceSendPlan(selectedChannels);
+      let invoice = await ensureIssuedInvoice(plan.issueSendVia);
+
+      if (plan.backendSendVia) {
         const inv = await sendInvoice({
-          invoiceId: issued.id,
-          sendVia,
+          invoiceId: invoice.id,
+          sendVia: plan.backendSendVia,
           toEmail: draft.client.email || null,
           toPhoneE164: null,
         });
-        setIssued({
+        invoice = {
           id: inv.id,
           invoiceNumber: inv.invoice_number,
           publicToken: inv.public_token,
-        });
-      } else {
-        // First-time issue with delivery in the same call.
-        const savedDraftId = await ensureDraftSaved();
-        const inv = await issueInvoice({
-          draftId: savedDraftId,
-          sendVia,
-        });
-        setIssued({
-          id: inv.id,
-          invoiceNumber: inv.invoice_number,
-          publicToken: inv.public_token,
-        });
+        };
+        setIssued(invoice);
       }
+
+      if (plan.shouldOpenWhatsApp) {
+        await openWhatsAppShare(invoice);
+      }
+
       setSendState("sent");
-      onSent?.(Array.from(channels));
+      onSent?.(selectedChannels);
     } catch (err) {
       setSendState("idle");
       setSendError(err instanceof Error ? err.message : "Could not send invoice");

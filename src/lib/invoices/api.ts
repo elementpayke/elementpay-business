@@ -171,6 +171,24 @@ export async function updateDraft(
   return parseResponse(res);
 }
 
+export async function saveInvoiceDraft(
+  payload: InvoiceCreatePayload,
+  draftId: number | null,
+): Promise<InvoiceDraft> {
+  if (draftId == null) {
+    return createDraft(payload);
+  }
+
+  try {
+    return await updateDraft(draftId, payload);
+  } catch (err) {
+    if (err instanceof InvoiceApiError && err.status === 404) {
+      return createDraft(payload);
+    }
+    throw err;
+  }
+}
+
 export async function getDraft(draftId: number): Promise<InvoiceDraft> {
   const res = await authedFetch(
     `${API_BASE}/api/v1/invoices/drafts/${encodeURIComponent(String(draftId))}`,
