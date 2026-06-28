@@ -237,6 +237,7 @@ export default function TreasuryCopilotChat() {
 
   const confirmAction = useCallback(
     async (action: PendingAction) => {
+      if (loading) return;
       setConfirming(true);
       setError(null);
       try {
@@ -263,7 +264,7 @@ export default function TreasuryCopilotChat() {
         setConfirming(false);
       }
     },
-    [callConfirm],
+    [callConfirm, loading],
   );
 
   const onFilePick = useCallback(
@@ -335,7 +336,7 @@ export default function TreasuryCopilotChat() {
           <PendingActionCard
             key={action.action_id}
             action={action}
-            confirming={confirming}
+            confirming={confirming || loading}
             onConfirm={() => void confirmAction(action)}
             onDismiss={() =>
               setPendingActions((prev) =>
