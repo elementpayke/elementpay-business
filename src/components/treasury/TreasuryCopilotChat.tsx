@@ -74,10 +74,6 @@ export default function TreasuryCopilotChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    invoiceIntakeRef.current = invoiceIntake;
-  }, [invoiceIntake]);
-
-  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, loading, pendingActions, invoiceIntake, error]);
 
@@ -101,6 +97,11 @@ export default function TreasuryCopilotChat() {
     if (fileRef.current) {
       fileRef.current.value = "";
     }
+  }, []);
+
+  const updateInvoiceIntake = useCallback((draft: InvoiceIntakeDraft | null) => {
+    invoiceIntakeRef.current = draft;
+    setInvoiceIntake(draft);
   }, []);
 
   const submitUserMessage = useCallback(
@@ -137,9 +138,6 @@ export default function TreasuryCopilotChat() {
       setInput("");
       setLoading(true);
       setError(null);
-      if (!shouldRollback) {
-        setPendingActions([]);
-      }
 
       try {
         const data = await callChat(nextHistory, selectedDocument);
@@ -165,7 +163,7 @@ export default function TreasuryCopilotChat() {
           ];
         }
         setMessages((m) => [...m, assistantMsg]);
-        if (Array.isArray(data.pending_actions) && data.pending_actions.length > 0) {
+        if (Array.isArray(data.pending_actions)) {
           setPendingActions(data.pending_actions as PendingAction[]);
         }
         clearAttachment();
@@ -203,16 +201,16 @@ export default function TreasuryCopilotChat() {
         timestamp: messageTimestamp(),
       };
       setMessages((m) => [...m, userMsg, assistantMsg]);
-      setInvoiceIntake(intakeDraft);
+      updateInvoiceIntake(intakeDraft);
       setInput("");
       setError(null);
       clearAttachment();
       return;
     }
 
-    setInvoiceIntake(null);
+    updateInvoiceIntake(null);
     await submitUserMessage(text);
-  }, [clearAttachment, input, loading, submitUserMessage]);
+  }, [clearAttachment, input, loading, submitUserMessage, updateInvoiceIntake]);
 
   const submitInvoiceIntake = useCallback(
     (message: string) => {
@@ -227,13 +225,14 @@ export default function TreasuryCopilotChat() {
         });
 
         if (submitted) {
-          setInvoiceIntake((currentDraft) =>
-            currentDraft === draft ? null : currentDraft,
-          );
+          const nextDraft = invoiceIntakeRef.current === draft
+            ? null
+            : invoiceIntakeRef.current;
+          updateInvoiceIntake(nextDraft);
         }
       })();
     },
-    [invoiceIntake, submitUserMessage],
+    [invoiceIntake, submitUserMessage, updateInvoiceIntake],
   );
 
   const confirmAction = useCallback(
