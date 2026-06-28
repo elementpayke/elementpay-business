@@ -68,9 +68,14 @@ export default function TreasuryCopilotChat() {
     null,
   );
   const historyRef = useRef<ChatMessage[]>([]);
+  const invoiceIntakeRef = useRef<InvoiceIntakeDraft | null>(null);
   const submitInFlightRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    invoiceIntakeRef.current = invoiceIntake;
+  }, [invoiceIntake]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -125,13 +130,16 @@ export default function TreasuryCopilotChat() {
       const previousHistory = historyRef.current;
       const nextHistory = [...historyRef.current, historyUserMsg];
       const selectedDocument = "document" in options ? options.document : attachment;
+      const shouldRollback = Boolean(options.rollbackOnFailure);
 
       historyRef.current = nextHistory;
       setMessages((m) => [...m, userMsg]);
       setInput("");
       setLoading(true);
       setError(null);
-      setPendingActions([]);
+      if (!shouldRollback) {
+        setPendingActions([]);
+      }
 
       try {
         const data = await callChat(nextHistory, selectedDocument);
@@ -163,7 +171,7 @@ export default function TreasuryCopilotChat() {
         clearAttachment();
         return true;
       } catch (err) {
-        if (options.rollbackOnFailure) {
+        if (shouldRollback) {
           historyRef.current = previousHistory;
           setMessages((m) => m.filter((message) => message !== userMsg));
         }
@@ -270,6 +278,10 @@ export default function TreasuryCopilotChat() {
       setError(null);
       try {
         const doc = await readDocumentFile(file);
+        if (invoiceIntakeRef.current) {
+          clearAttachment();
+          return;
+        }
         setAttachment(doc);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not read file");
