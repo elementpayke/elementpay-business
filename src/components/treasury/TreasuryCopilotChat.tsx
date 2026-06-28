@@ -91,12 +91,20 @@ export default function TreasuryCopilotChat() {
     [],
   );
 
+  const clearAttachment = useCallback(() => {
+    setAttachment(null);
+    if (fileRef.current) {
+      fileRef.current.value = "";
+    }
+  }, []);
+
   const submitUserMessage = useCallback(
     async (
       text: string,
       options: {
         displayContent?: string;
         document?: { name: string; text: string } | null;
+        rollbackOnFailure?: boolean;
       } = {},
     ) => {
       if (loading || submitInFlightRef.current) {
@@ -114,6 +122,7 @@ export default function TreasuryCopilotChat() {
           : { displayContent: options.displayContent }),
       };
       const historyUserMsg: ChatMessage = { role: "user", content: text };
+      const previousHistory = historyRef.current;
       const nextHistory = [...historyRef.current, historyUserMsg];
       const selectedDocument = "document" in options ? options.document : attachment;
 
@@ -151,9 +160,13 @@ export default function TreasuryCopilotChat() {
         if (Array.isArray(data.pending_actions) && data.pending_actions.length > 0) {
           setPendingActions(data.pending_actions as PendingAction[]);
         }
-        setAttachment(null);
+        clearAttachment();
         return true;
       } catch (err) {
+        if (options.rollbackOnFailure) {
+          historyRef.current = previousHistory;
+          setMessages((m) => m.filter((message) => message !== userMsg));
+        }
         setError(err instanceof Error ? err.message : "Request failed");
         return false;
       } finally {
@@ -161,7 +174,7 @@ export default function TreasuryCopilotChat() {
         setLoading(false);
       }
     },
-    [attachment, callChat, loading],
+    [attachment, callChat, clearAttachment, loading],
   );
 
   const send = useCallback(async () => {
@@ -185,14 +198,13 @@ export default function TreasuryCopilotChat() {
       setInvoiceIntake(intakeDraft);
       setInput("");
       setError(null);
-      setPendingActions([]);
-      setAttachment(null);
+      clearAttachment();
       return;
     }
 
     setInvoiceIntake(null);
     await submitUserMessage(text);
-  }, [input, loading, submitUserMessage]);
+  }, [clearAttachment, input, loading, submitUserMessage]);
 
   const submitInvoiceIntake = useCallback(
     (message: string) => {
@@ -203,6 +215,7 @@ export default function TreasuryCopilotChat() {
             ? `Submitted invoice details for ${draft.clientName}.`
             : "Submitted invoice details.",
           document: null,
+          rollbackOnFailure: true,
         });
 
         if (submitted) {
@@ -246,16 +259,24 @@ export default function TreasuryCopilotChat() {
     [callConfirm],
   );
 
-  const onFilePick = useCallback(async (file: File | null) => {
-    if (!file) return;
-    setError(null);
-    try {
-      const doc = await readDocumentFile(file);
-      setAttachment(doc);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not read file");
-    }
-  }, []);
+  const onFilePick = useCallback(
+    async (file: File | null) => {
+      if (!file) return;
+      if (invoiceIntake) {
+        clearAttachment();
+        return;
+      }
+
+      setError(null);
+      try {
+        const doc = await readDocumentFile(file);
+        setAttachment(doc);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not read file");
+      }
+    },
+    [clearAttachment, invoiceIntake],
+  );
 
   return (
     <div
@@ -334,7 +355,7 @@ export default function TreasuryCopilotChat() {
             <span className="flex-1 truncate">{attachment.name}</span>
             <button
               type="button"
-              onClick={() => setAttachment(null)}
+              onClick={clearAttachment}
               className="text-[#8E93A7] hover:text-[#B23A4E]"
               aria-label="Remove attachment"
             >
@@ -354,8 +375,8 @@ export default function TreasuryCopilotChat() {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            disabled={loading}
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#ECEEF4] text-[#5C637A] hover:border-primary-300"
+            disabled={loading || Boolean(invoiceIntake)}
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#ECEEF4] text-[#5C637A] hover:border-primary-300 disabled:cursor-not-allowed disabled:text-[#B4B9CC] disabled:hover:border-[#ECEEF4]"
             aria-label="Attach document"
           >
             <Paperclip className="h-4 w-4" />
